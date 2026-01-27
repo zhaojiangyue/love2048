@@ -1,0 +1,11 @@
+Release/Dist_Release/license.txt
+Release/Dist_Release/love.dll
+Release/Dist_Release/lua51.dll
+Release/Dist_Release/mpg123.dll
+Release/Dist_Release/msvcp120.dll
+Release/Dist_Release/msvcr120.dll
+Release/Dist_Release/NVIDIA_2048.exe
+Release/Dist_Release/NVIDIA_2048.love
+Release/Dist_Release/OpenAL32.dll
+Release/Dist_Release/SDL2.dll
+build.bat
