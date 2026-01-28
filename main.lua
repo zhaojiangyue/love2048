@@ -1,35 +1,39 @@
 local Logic = require("src.game_logic")
 local Renderer = require("src.ui.renderer")
 local Storage = require("src.storage")
+local GameState = require("src.game_state")
+local Mechanics = require("src.mechanics")
+local Constants = require("src.constants")
 
-local bestScore = 0
+local autoSaveCounter = 0
 
 function love.load()
-    love.window.setTitle("NVIDIA 2048")
+    love.window.setTitle("NVIDIA 2048: Neural Edition")
     math.randomseed(os.time())
     Renderer.load()
-    
+
     local saved = Storage.loadGame()
     if saved then
-        grid = saved.grid
-        score = saved.score
-        bestScore = saved.highscore or 0
-        state = "playing"
-        
+        -- Import saved state
+        GameState.import(saved)
+
         Renderer.reset()
         -- Restore visual state
         for y = 1, 4 do
             for x = 1, 4 do
-                if grid[y][x] then
-                    -- Reset visual properties since we are loading fresh
-                    grid[y][x].x = x
-                    grid[y][x].y = y
-                    Renderer.addTile(grid[y][x])
+                if GameState.grid[y][x] then
+                    local tile = GameState.grid[y][x]
+                    tile.x = x
+                    tile.y = y
+                    local meta = GameState.getTileMeta(tile.id)
+                    Renderer.addTile(tile, meta)
                 end
             end
         end
-        if not Logic.canMove(grid) then
-            state = "gameover"
+
+        if not Logic.canMove(GameState.grid) then
+            GameState.state = "gameover"
+            GameState.gameOverReason = "no_moves"
         end
     else
         resetGame()
@@ -39,6 +43,19 @@ end
 function love.update(dt)
     local success, err = pcall(function()
         Renderer.update(dt)
+
+        -- Update heat calculation every frame
+        GameState.calculateHeat()
+
+        -- Check for LQ tiles
+        GameState.checkForLQTiles()
+
+        -- Detect and display SLI bridges
+        if GameState.state == "playing" then
+            local bridges = Mechanics.detectSLIBridges(GameState.grid)
+            local connections = Mechanics.getSLIConnections(bridges)
+            Renderer.setSLIConnections(connections)
+        end
     end)
     if not success then
         print("ERROR in update: " .. tostring(err))
@@ -46,74 +63,383 @@ function love.update(dt)
 end
 
 function love.mousepressed(x, y, button)
-    if state == "gameover" then
+    if GameState.state == "gameover" then
         resetGame()
     end
 end
 
 function love.quit()
-    Storage.saveGame(grid, score, math.max(score, bestScore))
+    Storage.saveGame(GameState.export())
 end
 
 function resetGame()
-    grid = Logic.initGrid()
+    GameState.init()
     Renderer.reset()
-    score = 0
-    state = "playing"
-    
-    local t1 = Logic.spawnTile(grid)
-    if t1 then Renderer.addTile(t1) end
-    local t2 = Logic.spawnTile(grid)
-    if t2 then Renderer.addTile(t2) end
+    autoSaveCounter = 0
+
+    local t1 = Logic.spawnTile(GameState.grid)
+    if t1 then
+        local meta = GameState.getTileMeta(t1.id)
+        Renderer.addTile(t1, meta)
+    end
+    local t2 = Logic.spawnTile(GameState.grid)
+    if t2 then
+        local meta = GameState.getTileMeta(t2.id)
+        Renderer.addTile(t2, meta)
+    end
 end
 
 function love.keypressed(key)
-    if key == "r" then
-        if love.keyboard.isDown("lshift") or love.keyboard.isDown("rshift") then
-            -- Shift+R: Wipe Save and Restart
-            Storage.clearSave()
-            -- Reset best score manually since we just wiped it
-            bestScore = 0
-            resetGame()
-        else
-            -- Regular R: Just restart current game (keeps high score if we were saving it separately, but currently highscore is in savefile)
-            -- Actually, Storage.saveGame writes both.
-            resetGame() 
+    -- Pause/unpause
+    if key == "escape" then
+        -- If in DLSS selection mode, exit it first
+        if GameState.selectedTileForDLSS then
+            print("DLSS selection cancelled")
+            GameState.selectedTileForDLSS = nil
+            return
+        end
+
+        -- Otherwise toggle pause
+        if GameState.state == "playing" then
+            GameState.state = "paused"
+        elseif GameState.state == "paused" then
+            GameState.state = "playing"
         end
         return
     end
 
-    if state == "gameover" then
+    -- Reset commands - Require Ctrl+R to prevent accidental resets
+    if key == "r" then
+        if love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl") then
+            -- Ctrl+R: Restart game
+            GameState.selectedTileForDLSS = nil  -- Clear DLSS mode
+            resetGame()
+            print("Game restarted! (Ctrl+R)")
+        else
+            -- Just R pressed - show hint
+            print("Press Ctrl+R to restart the game")
+        end
         return
     end
-    
-    local moved, scoreAdd, moves = false, 0, {}
-    
-    if key == "left" or key == "right" or key == "up" or key == "down" then
-        moved, scoreAdd, moves = Logic.move(grid, key)
-        
-        if moved then
-            score = score + scoreAdd
-            if score > bestScore then bestScore = score end
-            
-            Renderer.onMove(moves)
-            
-            local t = Logic.spawnTile(grid)
-            if t then 
-                Renderer.addTile(t) 
+
+    -- DLSS upscaling (SPACE key) - REDESIGNED: Upgrade ANY tile!
+    if key == "space" then
+        if GameState.state == "playing" then
+            -- Check if we have charges
+            if GameState.dlssCharges == 0 then
+                print("DLSS unavailable: Out of charges! Earn 2000 points to regenerate.")
+                return
             end
-            
-            -- Auto-save on move? Maybe too expensive for disk IO every move?
-            -- Let's stick to love.quit for now, or maybe every 10 moves.
-            
-            if not Logic.canMove(grid) then
-                state = "gameover"
+
+            -- Enter tile selection mode
+            if not GameState.selectedTileForDLSS then
+                print("DLSS READY: Use arrow keys to select a tile, then press SPACE to upgrade it!")
+                GameState.selectedTileForDLSS = {x = 1, y = 1}
+                -- Find first non-empty tile
+                for y = 1, 4 do
+                    for x = 1, 4 do
+                        if GameState.grid[y][x] then
+                            GameState.selectedTileForDLSS = {x = x, y = y}
+                            return
+                        end
+                    end
+                end
+            else
+                -- Apply DLSS to selected tile
+                local tx = GameState.selectedTileForDLSS.x
+                local ty = GameState.selectedTileForDLSS.y
+                local tile = GameState.grid[ty][tx]
+
+                if tile then
+                    local success, bonusScore, oldVal = Mechanics.applyDLSS(tile)
+
+                    if success then
+                        -- Use DLSS charge
+                        GameState.useDLSSCharge()
+
+                        -- Visual effects
+                        Renderer.addDLSSEffect(tx, ty)
+                        local meta = GameState.getTileMeta(tile.id)
+                        Renderer.updateTileMeta(tile.id, meta, tile.val)
+
+                        -- Award bonus score
+                        GameState.score = GameState.score + bonusScore
+                        if GameState.score > GameState.bestScore then
+                            GameState.bestScore = GameState.score
+                        end
+
+                        -- Visual feedback
+                        Renderer.addScorePopup(tx, ty, bonusScore, "dlss")
+                        Renderer.addShake(6)
+
+                        -- Recalculate heat
+                        GameState.calculateHeat()
+
+                        print(string.format("DLSS Upscaling! %d → %d (+%d points). Charges: %d/3",
+                            oldVal, tile.val, bonusScore, GameState.dlssCharges))
+
+                        GameState.selectedTileForDLSS = nil
+                    else
+                        print(bonusScore) -- Error message
+                    end
+                else
+                    print("No tile at selected position!")
+                end
+            end
+        end
+        return
+    end
+
+    -- Arrow key navigation for DLSS tile selection
+    if GameState.selectedTileForDLSS then
+        local moved = false
+        if key == "left" and GameState.selectedTileForDLSS.x > 1 then
+            GameState.selectedTileForDLSS.x = GameState.selectedTileForDLSS.x - 1
+            moved = true
+        elseif key == "right" and GameState.selectedTileForDLSS.x < 4 then
+            GameState.selectedTileForDLSS.x = GameState.selectedTileForDLSS.x + 1
+            moved = true
+        elseif key == "up" and GameState.selectedTileForDLSS.y > 1 then
+            GameState.selectedTileForDLSS.y = GameState.selectedTileForDLSS.y - 1
+            moved = true
+        elseif key == "down" and GameState.selectedTileForDLSS.y < 4 then
+            GameState.selectedTileForDLSS.y = GameState.selectedTileForDLSS.y + 1
+            moved = true
+        end
+
+        if moved then
+            local tile = GameState.grid[GameState.selectedTileForDLSS.y][GameState.selectedTileForDLSS.x]
+            if tile then
+                local tier = Constants.TIERS[tile.val]
+                print(string.format("Selected: %s (value: %d) at (%d,%d)",
+                    tier and tier.name or "Unknown", tile.val,
+                    GameState.selectedTileForDLSS.x, GameState.selectedTileForDLSS.y))
+            else
+                print(string.format("Empty cell at (%d,%d)",
+                    GameState.selectedTileForDLSS.x, GameState.selectedTileForDLSS.y))
+            end
+        end
+        return
+    end
+
+    if GameState.state == "gameover" or GameState.state == "paused" then
+        return
+    end
+
+    local moved, scoreAdd, moves = false, 0, {}
+
+    if key == "left" or key == "right" or key == "up" or key == "down" then
+        moved, scoreAdd, moves = Logic.move(GameState.grid, key)
+
+        if moved then
+            -- Increment move counter
+            GameState.moveCount = GameState.moveCount + 1
+
+            -- Update training levels for all tiles using Mechanics module
+            local trainingOk, failedTile, fx, fy = Mechanics.updateTrainingLevels(
+                GameState.grid,
+                GameState.tileMeta,
+                GameState.moveCount
+            )
+
+            if not trainingOk then
+                -- Game over due to overtrained tile
+                GameState.state = "gameover"
+                GameState.gameOverReason = "overtrained"
+
+                -- Show which tile caused the failure
+                if failedTile then
+                    print(string.format("Neural network collapsed! Tile %s at (%d,%d) exceeded training limits",
+                        failedTile.val, fx, fy))
+                end
+                return
+            end
+
+            -- Apply training bonus to score from merges
+            -- Also detect SLI bridge formations for bonus multipliers
+            local sliBridges = Mechanics.detectSLIBridges(GameState.grid)
+            local mergedTileIds = {}
+
+            for _, move in ipairs(moves) do
+                if move.type == "merge" then
+                    -- Track which tiles were merged
+                    if move.source then table.insert(mergedTileIds, move.source.id) end
+                    if move.target then table.insert(mergedTileIds, move.target.id) end
+
+                    -- Show base merge score
+                    local baseMergeScore = move.tile.val
+                    Renderer.addScorePopup(move.tile.x, move.tile.y, baseMergeScore, "merge")
+
+                    -- Check if either source or target was trained
+                    local sourceMeta = move.source and GameState.tileMeta[move.source.id]
+                    local targetMeta = move.target and GameState.tileMeta[move.target.id]
+                    local hadTrainingBonus = false
+
+                    if Mechanics.isTrained(sourceMeta) or Mechanics.isTrained(targetMeta) then
+                        -- Apply training bonus to the merge score
+                        local bonusScore = baseMergeScore -- 2x total = original + bonus
+                        scoreAdd = scoreAdd + bonusScore
+                        hadTrainingBonus = true
+
+                        -- Visual feedback for training bonus
+                        Renderer.addScorePopup(move.tile.x, move.tile.y, bonusScore, "training")
+                        Renderer.addShake(3)
+                    end
+
+                    -- Check if merged tiles were part of an SLI bridge
+                    for _, bridge in ipairs(sliBridges) do
+                        local inBridge = false
+                        local bridgeTileIds = {}
+
+                        for _, tile in ipairs(bridge.tiles) do
+                            table.insert(bridgeTileIds, tile.id)
+                            -- Check if this merged tile was in the bridge
+                            if (move.source and tile.id == move.source.id) or
+                               (move.target and tile.id == move.target.id) then
+                                inBridge = true
+                            end
+                        end
+
+                        if inBridge then
+                            -- Apply SLI bridge bonus
+                            local bonusedScore, multiplier = Mechanics.applySLIBonus(baseMergeScore, bridge.tiles)
+                            local sliBonusScore = bonusedScore - baseMergeScore
+
+                            scoreAdd = scoreAdd + sliBonusScore
+
+                            -- Visual feedback for SLI bonus
+                            Renderer.addScorePopup(move.tile.x, move.tile.y, sliBonusScore, "sli")
+                            Renderer.addShake(5)
+
+                            -- Special achievement for 4-tile bridge (Quad-GPU)
+                            if bridge.count >= 4 then
+                                print("QUAD-GPU ACHIEVEMENT! 4-tile SLI bridge merged!")
+                            end
+
+                            print(string.format("SLI Bridge bonus! %d-tile formation = %.1fx multiplier (+%d points)",
+                                bridge.count, multiplier, sliBonusScore))
+
+                            break -- Only apply bonus once per merge
+                        end
+                    end
+                end
+            end
+
+            -- Update score with potential training bonuses
+            GameState.score = GameState.score + scoreAdd
+            if GameState.score > GameState.bestScore then
+                GameState.bestScore = GameState.score
+            end
+
+            -- Clean up metadata for merged tiles
+            GameState.cleanupOrphanedMeta()
+
+            -- Apply Tensor Core Cascades for RTX merges
+            for _, move in ipairs(moves) do
+                if move.type == "merge" then
+                    local mergedTile = move.tile
+                    if Mechanics.isRTXTier(mergedTile.val) then
+                        -- Trigger tensor cascade effect
+                        local cascaded, cx, cy, oldVal, newVal = Mechanics.applyTensorCascade(
+                            GameState.grid,
+                            mergedTile.x,
+                            mergedTile.y
+                        )
+
+                        if cascaded then
+                            -- Visual feedback for tensor cascade
+                            Renderer.addTensorCascadeEffect(cx, cy)
+
+                            -- Add bonus score for cascade effect
+                            local cascadeBonus = math.floor(newVal * 0.5)
+                            GameState.score = GameState.score + cascadeBonus
+
+                            -- Show score popup for tensor cascade
+                            Renderer.addScorePopup(cx, cy, cascadeBonus, "tensor")
+                            Renderer.addShake(4)
+
+                            print(string.format("Tensor cascade! Boosted tile at (%d,%d) from %d to %d (+%d points)",
+                                cx, cy, oldVal, newVal, cascadeBonus))
+                        end
+                    end
+                end
+            end
+
+            -- Animate moves
+            Renderer.onMove(moves)
+
+            -- Update visual metadata for all tiles on board
+            for y = 1, 4 do
+                for x = 1, 4 do
+                    local tile = GameState.grid[y][x]
+                    if tile then
+                        local meta = GameState.getTileMeta(tile.id)
+                        Renderer.updateTileMeta(tile.id, meta)
+                    end
+                end
+            end
+
+            -- Spawn new tile (NO MORE LQ TILES!)
+            local t = Logic.spawnTile(GameState.grid)
+            if t then
+                local meta = GameState.getTileMeta(t.id)
+                Renderer.addTile(t, meta)
+            end
+
+            -- Cool down heat by 1% per move
+            GameState.coolDown()
+
+            -- Regenerate DLSS charge every 2000 points using Mechanics module
+            local previousScore = GameState.score - scoreAdd
+            if Mechanics.checkDLSSRegen(GameState.score, previousScore, GameState.dlssCharges) then
+                GameState.addDLSSCharge()
+                print(string.format("DLSS charge regenerated! Charges: %d/3 - Press SPACE to boost a tile!", GameState.dlssCharges))
+            end
+
+            -- Apply thermal throttling when heat >= 90%
+            if GameState.heatLevel >= 90 then
+                local throttled, tx, ty, oldVal, newVal = Mechanics.applyThermalThrottling(GameState.grid, GameState.heatLevel)
+                if throttled then
+                    print(string.format("⚠ THERMAL THROTTLING! Tile at (%d,%d) downgraded: %d → %d", tx, ty, oldVal, newVal))
+                    Renderer.updateTileMeta(GameState.grid[ty][tx].id, GameState.getTileMeta(GameState.grid[ty][tx].id), newVal)
+                    Renderer.addShake(8)
+                end
+            end
+
+            -- Auto-save every 10 moves
+            autoSaveCounter = autoSaveCounter + 1
+            if autoSaveCounter >= 10 then
+                Storage.saveGame(GameState.export())
+                autoSaveCounter = 0
+            end
+
+            -- Check game over
+            if not Logic.canMove(GameState.grid) then
+                GameState.state = "gameover"
+                GameState.gameOverReason = "no_moves"
             end
         end
     end
 end
 
 function love.draw()
-    Renderer.draw(score, state, bestScore)
-end
+    local displayState = GameState.getDisplayState()
+    displayState.selectedTileForDLSS = GameState.selectedTileForDLSS
+    Renderer.draw(GameState.score, GameState.state, GameState.bestScore, displayState)
 
+    -- Pause overlay
+    if GameState.state == "paused" then
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.setFont(Renderer.fontHuge)
+        love.graphics.printf("PAUSED", 0, 250, love.graphics.getWidth(), "center")
+        love.graphics.setFont(Renderer.fontLarge)
+        love.graphics.printf("Press ESC to resume", 0, 310, love.graphics.getWidth(), "center")
+
+        -- Show controls
+        love.graphics.setFont(Renderer.fontSmall)
+        love.graphics.printf("SPACE: Use DLSS Upscaling (boost any tile)", 0, 370, love.graphics.getWidth(), "center")
+        love.graphics.printf("Ctrl+R: Restart Game", 0, 395, love.graphics.getWidth(), "center")
+    end
+end

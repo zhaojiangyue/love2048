@@ -9,3 +9,4 @@ Release/Dist_Release/NVIDIA_2048.love
 Release/Dist_Release/OpenAL32.dll
 Release/Dist_Release/SDL2.dll
 build.bat
+Release
