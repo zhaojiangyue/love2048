@@ -38,6 +38,9 @@ function love.load()
     else
         resetGame()
     end
+
+    -- FORCE SPLASH STATE ON LOAD
+    GameState.state = "splash"
 end
 
 function love.update(dt)
@@ -55,6 +58,19 @@ function love.update(dt)
             local bridges = Mechanics.detectSLIBridges(GameState.grid)
             local connections = Mechanics.getSLIConnections(bridges)
             Renderer.setSLIConnections(connections)
+        elseif GameState.state == "splash" then
+             -- Add subtle particle movement on splash
+             if math.random() < 0.05 then
+                 local x = math.random(0, love.graphics.getWidth())
+                 local y = math.random(0, love.graphics.getHeight())
+                 table.insert(Renderer.particles, {
+                     x = x, y = y,
+                     vx = math.random(-20, 20), vy = math.random(-20, 20),
+                     life = 2, maxLife = 2,
+                     size = math.random(2, 4),
+                     color = {0, 1, math.random(), 0.5}
+                 })
+             end
         end
     end)
     if not success then
@@ -63,6 +79,12 @@ function love.update(dt)
 end
 
 function love.mousepressed(x, y, button)
+    if GameState.state == "splash" then
+        -- Transition to game
+        GameState.state = "playing"
+        return
+    end
+
     if GameState.state == "gameover" then
         resetGame()
     end
@@ -92,6 +114,12 @@ end
 function love.keypressed(key)
     -- Pause/unpause
     if key == "escape" then
+        -- If in SPLASH mode, quit? Or just ignore
+        if GameState.state == "splash" then
+            love.event.quit()
+            return
+        end
+
         -- If in DLSS selection mode, exit it first
         if GameState.selectedTileForDLSS then
             print("DLSS selection cancelled")
@@ -110,6 +138,8 @@ function love.keypressed(key)
 
     -- Reset commands - Require Ctrl+R to prevent accidental resets
     if key == "r" then
+        if GameState.state == "splash" then return end -- Ignore R in splash
+        
         if love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl") then
             -- Ctrl+R: Restart game
             GameState.selectedTileForDLSS = nil  -- Clear DLSS mode
@@ -218,6 +248,15 @@ function love.keypressed(key)
                 print(string.format("Empty cell at (%d,%d)",
                     GameState.selectedTileForDLSS.x, GameState.selectedTileForDLSS.y))
             end
+        end
+        return
+    end
+
+    -- Handle Splash Screen Input (Any key starts game)
+    if GameState.state == "splash" then
+        -- Exclude modifier keys to prevent accidental starts while tabbing
+        if key ~= "lctrl" and key ~= "rctrl" and key ~= "lalt" and key ~= "ralt" and key ~= "lshift" and key ~= "rshift" then
+             GameState.state = "playing"
         end
         return
     end
@@ -423,6 +462,11 @@ function love.keypressed(key)
 end
 
 function love.draw()
+    if GameState.state == "splash" then
+        Renderer.drawSplash()
+        return
+    end
+
     local displayState = GameState.getDisplayState()
     displayState.selectedTileForDLSS = GameState.selectedTileForDLSS
     Renderer.draw(GameState.score, GameState.state, GameState.bestScore, displayState)

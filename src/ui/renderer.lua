@@ -631,4 +631,77 @@ function Renderer.drawSLIBridges()
     end
 end
 
+
+function Renderer.drawSplash()
+    -- Background with particles (dark overlay)
+    love.graphics.clear(Constants.COLORS.BACKGROUND)
+    
+    -- Draw particles in background
+    for _, p in ipairs(Renderer.particles) do
+        love.graphics.setColor(p.color)
+        love.graphics.circle("fill", p.x, p.y, p.size * (p.life / p.maxLife))
+    end
+    
+    -- Semi-transparent overlay to make text pop
+    love.graphics.setColor(0, 0, 0, 0.4)
+    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+
+    local cx = love.graphics.getWidth() / 2
+    local cy = love.graphics.getHeight() / 2
+    
+    -- Main Title
+    love.graphics.setColor(Constants.COLORS.TEXT)
+    love.graphics.setFont(Renderer.fontHuge)
+    local title = "NVIDIA 2048"
+    love.graphics.printf(title, 0, 80, love.graphics.getWidth(), "center")
+    
+    -- Subtitle
+    love.graphics.setColor(0.3, 0.9, 0.4) -- NVIDIA Greenish
+    love.graphics.setFont(Renderer.fontLarge)
+    love.graphics.printf("Neural Edition", 0, 130, love.graphics.getWidth(), "center")
+
+    -- System Manual / How to Play
+    local startY = 200
+    local lineHeight = 40
+    
+    love.graphics.setColor(1, 1, 1, 0.9)
+    love.graphics.setFont(Renderer.fontLarge)
+    love.graphics.printf("SYSTEM MANUAL", 0, startY, love.graphics.getWidth(), "center")
+    
+    love.graphics.setFont(Renderer.fontSmall)
+    
+    local manualItems = {
+        { title = "THERMAL MANAGEMENT", text = "High-end GPUs generate heat. Avoid hitting 100%!", color = {1, 0.4, 0.4} },
+        { title = "DLSS UPSCALING", text = "Press SPACE to double any tile's value (Requires Charge)", color = {1, 0.5, 1} },
+        { title = "SLI LINK", text = "Align identical GPUs for massive score multipliers", color = {0.3, 0.8, 1} },
+        { title = "NEURAL TRAINING", text = "Old tiles get 'Overtrained' and crash. Merge them fast!", color = {0, 1, 1} }
+    }
+    
+    for i, item in ipairs(manualItems) do
+        local y = startY + 50 + (i-1) * 60
+        
+        -- Icon/Bullet
+        love.graphics.setColor(item.color)
+        love.graphics.circle("fill", cx - 200, y + 10, 5)
+        
+        -- Title
+        love.graphics.print(item.title, cx - 180, y)
+        
+        -- Text
+        love.graphics.setColor(0.8, 0.8, 0.8)
+        love.graphics.print(item.text, cx - 180, y + 20)
+    end
+
+    -- Click to Start Prompt
+    local pulse = 0.5 + math.abs(math.sin(love.timer.getTime() * 3)) * 0.5
+    love.graphics.setColor(0.4, 1, 0.4, pulse)
+    love.graphics.setFont(Renderer.fontLarge)
+    love.graphics.printf("CLICK ANYWHERE TO INITIALIZE SYSTEM...", 0, 550, love.graphics.getWidth(), "center")
+    
+    -- Version / Footer
+    love.graphics.setColor(0.3, 0.3, 0.3)
+    love.graphics.setFont(Renderer.fontSmall)
+    love.graphics.printf("v1.0.0 Stable Diffusion", 0, love.graphics.getHeight() - 30, love.graphics.getWidth(), "center")
+end
+
 return Renderer
