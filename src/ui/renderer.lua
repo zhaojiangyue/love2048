@@ -786,4 +786,57 @@ function Renderer.drawSplash()
     love.graphics.printf("v1.0.0 Stable Diffusion", 0, love.graphics.getHeight() - 30, love.graphics.getWidth(), "center")
 end
 
+
+
+function Renderer.drawVictory()
+    -- Golden Victory Overlay
+    love.graphics.clear(0.1, 0.1, 0, 1) -- Dark gold/brown background
+    
+    -- Draw particles in background
+    for _, p in ipairs(Renderer.particles) do
+        love.graphics.setColor(p.color)
+        love.graphics.circle("fill", p.x, p.y, p.size * (p.life / p.maxLife))
+    end
+    
+    local cx = love.graphics.getWidth() / 2
+    local cy = love.graphics.getHeight() / 2
+    
+    -- Animated Golden Ray/Glow effect (Simple radial lines or just pulsing background)
+    local time = love.timer.getTime()
+    love.graphics.setColor(1, 0.8, 0, 0.1 + math.sin(time) * 0.05)
+    love.graphics.circle("fill", cx, cy, 300)
+    
+    -- Main Victory Text
+    love.graphics.setColor(1, 0.9, 0.2) -- Gold
+    love.graphics.setFont(Renderer.fontHuge)
+    local title = "JENSEN'S KITCHEN"
+    love.graphics.printf(title, 0, 150, love.graphics.getWidth(), "center")
+    
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(Renderer.fontLarge)
+    love.graphics.printf("ACHIEVEMENT UNLOCKED!", 0, 220, love.graphics.getWidth(), "center")
+    
+    -- Subtext
+    love.graphics.setColor(0.8, 0.8, 0.8)
+    love.graphics.setFont(Renderer.fontSmall)
+    love.graphics.printf("You have reached the ultimate hardware frontier.", 0, 280, love.graphics.getWidth(), "center")
+    
+    -- 2048 Tile Display (Symbolic)
+    love.graphics.setColor(1, 0.84, 0)
+    love.graphics.rectangle("fill", cx - 50, cy - 20, 100, 100, 10, 10)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(Renderer.fontHuge)
+    love.graphics.print("2048", cx - 45, cy + 5)
+    
+    -- Instructions
+    local pulse = 0.5 + math.abs(math.sin(time * 3)) * 0.5
+    love.graphics.setColor(0, 1, 0.5, pulse)
+    love.graphics.setFont(Renderer.fontLarge)
+    love.graphics.printf("Press ENTER to Continue (Endless Mode)", 0, 500, love.graphics.getWidth(), "center")
+    
+    love.graphics.setColor(1, 0.3, 0.3)
+    love.graphics.setFont(Renderer.fontSmall)
+    love.graphics.printf("Press Ctrl+R to Restart", 0, 550, love.graphics.getWidth(), "center")
+end
+
 return Renderer

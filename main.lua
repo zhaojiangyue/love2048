@@ -44,6 +44,11 @@ function love.load()
 end
 
 function love.update(dt)
+    if GameState.state == "won" then
+        Renderer.update(dt)
+        return
+    end
+
     local success, err = pcall(function()
         Renderer.update(dt)
 
@@ -264,6 +269,18 @@ function love.keypressed(key)
     if GameState.state == "gameover" or GameState.state == "paused" then
         return
     end
+    
+    if GameState.state == "won" then
+        if key == "return" then
+            -- Continue playing (Endless Mode)
+            GameState.state = "playing"
+        elseif key == "r" and (love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl")) then
+            -- Restart
+            resetGame()
+            GameState.state = "playing" -- resetGame sets derived state, ensure playing
+        end
+        return
+    end
 
     local moved, scoreAdd, moves = false, 0, {}
 
@@ -453,8 +470,22 @@ function love.keypressed(key)
                 autoSaveCounter = 0
             end
 
+            -- Check for Win Condition (Reached 2048)
+            if not GameState.hasWon then
+                for y=1,4 do
+                    for x=1,4 do
+                        local tile = GameState.grid[y][x]
+                        if tile and tile.val == 2048 then
+                            GameState.hasWon = true
+                            GameState.state = "won"
+                            print("WINNER! Triggering Victory Screen.")
+                        end
+                    end
+                end
+            end
+
             -- Check game over
-            if not Logic.canMove(GameState.grid) then
+            if GameState.state == "playing" and not Logic.canMove(GameState.grid) then
                 GameState.state = "gameover"
                 GameState.gameOverReason = "no_moves"
             end
@@ -465,6 +496,12 @@ end
 function love.draw()
     if GameState.state == "splash" then
         Renderer.drawSplash()
+        return
+    end
+    
+    if GameState.state == "won" then
+        Renderer.draw(GameState.score, "playing", GameState.bestScore, GameState.getDisplayState()) -- Draw game behind
+        Renderer.drawVictory()
         return
     end
 

@@ -13,6 +13,7 @@ GameState.moveCount = 0
 GameState.dlssCharges = 3
 GameState.heatLevel = 0
 GameState.gameOverReason = nil -- nil, "overtrained", "no_moves"
+GameState.hasWon = false -- Track if player has reached 2048
 
 -- Tile metadata tracking (indexed by tile ID)
 GameState.tileMeta = {}
@@ -31,7 +32,9 @@ function GameState.init()
     GameState.state = "playing"
     GameState.tileMeta = {}
     GameState.hasLQTile = false
+    GameState.hasLQTile = false
     GameState.gameOverReason = nil
+    GameState.hasWon = false
 end
 
 function GameState.reset()
@@ -201,6 +204,7 @@ function GameState.import(data)
     GameState.tileMeta = data.tileMeta or {}
     GameState.state = data.state or "playing"
     GameState.gameOverReason = nil
+    GameState.hasWon = data.hasWon or false
 
     -- Recalculate derived state
     GameState.checkForLQTiles()
