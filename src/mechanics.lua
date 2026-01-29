@@ -387,11 +387,11 @@ end
 -- Calculate SLI bridge bonus
 function Mechanics.getSLIBridgeBonus(bridgeCount)
     if bridgeCount == 2 then
-        return 1.5  -- +50% score
+        return 2.5  -- +150% score (increased from 1.5)
     elseif bridgeCount == 3 then
-        return 2.0  -- +100% score
+        return 5.0  -- +400% score (increased from 2.0)
     elseif bridgeCount >= 4 then
-        return 3.0  -- +200% score
+        return 10.0 -- +900% score (increased from 3.0)
     end
     return 1.0
 end

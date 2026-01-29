@@ -283,6 +283,12 @@ function Renderer.update(dt)
         p.x = p.x + p.vx * dt
         p.y = p.y + p.vy * dt
         p.life = p.life - dt
+        
+        if p.drag then
+            p.vx = p.vx * (1 - p.drag * dt)
+            p.vy = p.vy * (1 - p.drag * dt)
+        end
+        
         p.color[4] = p.life / p.maxLife
 
         if p.life <= 0 then
@@ -494,7 +500,18 @@ function Renderer.draw(score, state, bestScore, gameState)
     -- Draw particles
     for _, p in ipairs(Renderer.particles) do
         love.graphics.setColor(p.color)
-        love.graphics.circle("fill", p.x, p.y, p.size * (p.life / p.maxLife))
+        if p.type == "ring" then
+             local progress = 1 - (p.life / p.maxLife)
+             local r = p.radius + (p.maxRadius - p.radius) * progress
+             love.graphics.setLineWidth(p.width * (1-progress))
+             love.graphics.circle("line", p.x, p.y, r)
+        elseif p.type == "flash" then
+             local progress = 1 - (p.life / p.maxLife)
+             local r = p.maxRadius * progress
+             love.graphics.circle("fill", p.x, p.y, r)
+        else
+            love.graphics.circle("fill", p.x, p.y, p.size * (p.life / p.maxLife))
+        end
     end
 
     -- Draw floating score texts
@@ -604,6 +621,8 @@ function Renderer.drawDLSSCharges(x, y, charges)
 end
 
 function Renderer.drawSLIBridges()
+    local time = love.timer.getTime()
+    
     for _, conn in ipairs(Renderer.sliConnections) do
         -- Draw connection lines between bridged tiles
         local vt1 = Renderer.findVisualTile(conn.tile1)
@@ -615,19 +634,82 @@ function Renderer.drawSLIBridges()
             local x2 = vt2.x + Constants.TILE_SIZE / 2
             local y2 = vt2.y + Constants.TILE_SIZE / 2
 
-            -- Animated glow effect
-            local glowPhase = (love.timer.getTime() * 2) % 1
-            local alpha = 0.5 + math.sin(glowPhase * math.pi * 2) * 0.3
-
-            love.graphics.setColor(0.3, 0.9, 1, alpha)
+            -- NVLink Beam Effect
+            -- 1. Outer Glow (Pulsing)
+            local pulse = 0.5 + math.sin(time * 5) * 0.3
+            love.graphics.setColor(0, 1, 0.5, pulse * 0.4)
+            love.graphics.setLineWidth(12)
+            love.graphics.line(x1, y1, x2, y2)
+            
+            -- 2. Inner Core (Bright Green/Cyan)
+            love.graphics.setColor(0.2, 1, 0.8, 0.9)
             love.graphics.setLineWidth(4)
             love.graphics.line(x1, y1, x2, y2)
-
-            -- Brighter inner line
-            love.graphics.setColor(1, 1, 1, alpha * 0.8)
-            love.graphics.setLineWidth(2)
-            love.graphics.line(x1, y1, x2, y2)
+            
+            -- 3. Data Flow Particles
+            local dist = math.sqrt((x2-x1)^2 + (y2-y1)^2)
+            local angle = math.atan2(y2-y1, x2-x1)
+            local particleCount = math.floor(dist / 20)
+            
+            love.graphics.setColor(1, 1, 1, 0.8)
+            for i = 0, particleCount do
+                local offset = (time * 100 + i * (dist/particleCount)) % dist
+                local px = x1 + math.cos(angle) * offset
+                local py = y1 + math.sin(angle) * offset
+                love.graphics.circle("fill", px, py, 2)
+            end
+            
+            -- 4. Connector Nodes at endpoints
+            love.graphics.setColor(0, 1, 0.5, 1)
+            love.graphics.circle("fill", x1, y1, 6)
+            love.graphics.circle("fill", x2, y2, 6)
         end
+    end
+end
+
+function Renderer.addSLIMergeEffect(x, y)
+    -- Massive NVLink Surge Effect
+    local drawX, drawY = Renderer.getDrawPos(x, y)
+    local centerX = drawX + Constants.TILE_SIZE / 2
+    local centerY = drawY + Constants.TILE_SIZE / 2
+    
+    -- 1. Expanding Shockwave Ring
+    local shockwave = {
+        x = centerX, y = centerY,
+        radius = 10, maxRadius = 300,
+        width = 20,
+        life = 0.5, maxLife = 0.5,
+        color = {0, 1, 0.8, 1},
+        type = "ring"
+    }
+    table.insert(Renderer.particles, shockwave)
+    
+    -- 2. Intense Flash
+    local flash = {
+        x = centerX, y = centerY,
+        radius = 0, maxRadius = 150, -- Solid circle flash
+        life = 0.2, maxLife = 0.2,
+        color = {0.8, 1, 0.9, 0.8},
+        type = "flash"
+    }
+    table.insert(Renderer.particles, flash)
+    
+    -- 3. High Velocity Data Debris
+    for i = 1, 30 do
+        local angle = math.random() * math.pi * 2
+        local speed = math.random(100, 400)
+        local p = {
+            x = centerX,
+            y = centerY,
+            vx = math.cos(angle) * speed,
+            vy = math.sin(angle) * speed,
+            life = 1.0,
+            maxLife = 1.0,
+            size = math.random(4, 10),
+            color = {0, 1, math.random(), 1},
+            drag = 2
+        }
+        table.insert(Renderer.particles, p)
     end
 end
 

@@ -348,7 +348,8 @@ function love.keypressed(key)
 
                             -- Visual feedback for SLI bonus
                             Renderer.addScorePopup(move.tile.x, move.tile.y, sliBonusScore, "sli")
-                            Renderer.addShake(5)
+                            Renderer.addSLIMergeEffect(move.tile.x, move.tile.y) -- Trigger new NVLink surge
+                            Renderer.addShake(12) -- Increased shake for impact
 
                             -- Special achievement for 4-tile bridge (Quad-GPU)
                             if bridge.count >= 4 then
