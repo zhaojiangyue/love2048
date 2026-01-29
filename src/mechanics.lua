@@ -258,7 +258,7 @@ end
 -- ============================================================================
 
 Mechanics.DLSS_MAX_CHARGES = 3
-Mechanics.DLSS_REGEN_POINTS = 2000  -- Points needed to regenerate 1 charge (harder to get)
+Mechanics.DLSS_REGEN_POINTS = 500  -- Points needed to regenerate 1 charge (every 500 points)
 
 -- Apply DLSS upscaling to ANY tile - strategic power-up!
 function Mechanics.applyDLSS(tile)
@@ -384,14 +384,14 @@ function Mechanics.detectSLIBridges(grid)
     return bridges
 end
 
--- Calculate SLI bridge bonus
+-- Calculate SLI bridge bonus - MUCH STRONGER!
 function Mechanics.getSLIBridgeBonus(bridgeCount)
     if bridgeCount == 2 then
-        return 2.5  -- +150% score (increased from 1.5)
+        return 3.0  -- +200% score (was 1.5x)
     elseif bridgeCount == 3 then
-        return 5.0  -- +400% score (increased from 2.0)
+        return 5.0  -- +400% score (was 2.0x)
     elseif bridgeCount >= 4 then
-        return 10.0 -- +900% score (increased from 3.0)
+        return 10.0  -- +900% score!! (was 3.0x)
     end
     return 1.0
 end
