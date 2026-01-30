@@ -4,6 +4,7 @@ local Storage = require("src.storage")
 local GameState = require("src.game_state")
 local Mechanics = require("src.mechanics")
 local Constants = require("src.constants")
+local Audio = require("src.audio")
 
 local autoSaveCounter = 0
 
@@ -38,6 +39,10 @@ function love.load()
     else
         resetGame()
     end
+
+    -- Initialize Audio
+    Audio.load()
+    Audio.playBGM()
 
     -- FORCE SPLASH STATE ON LOAD
     GameState.state = "splash"
@@ -137,6 +142,16 @@ function love.keypressed(key)
             GameState.state = "paused"
         elseif GameState.state == "paused" then
             GameState.state = "playing"
+        end
+        return
+    end
+
+    -- Mute Toggle (M)
+    if key == "m" then
+        if Audio.toggleMute() then
+            print("Audio Muted")
+        else
+            print("Audio Unmuted")
         end
         return
     end
