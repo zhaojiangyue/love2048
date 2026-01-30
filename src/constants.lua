@@ -50,7 +50,13 @@ Constants.TIERS = {
     [256] = { name = "A100", color = {0.8, 0.5, 0.1} },
     [512] = { name = "H100", color = {0.9, 0.1, 0.1} },
     [1024] = { name = "GB200", color = {0.5, 0.1, 0.9} },
-    [2048] = { name = "Jensen's Kitchen", color = {1, 0.84, 0} } -- Gold
+    [2048] = { name = "Jensen's Kitchen", color = {1, 0.84, 0} }, -- Gold
+    -- Endless Mode Tiers
+    [4096] = { name = "Quantum Core", color = {0.8, 0.9, 1.0} }, -- Platinum
+    [8192] = { name = "Dyson Swarm", color = {1, 0.4, 0.7} }, -- Pink/Magenta
+    [16384] = { name = "Multiverse GPU", color = {0, 1, 1} }, -- Cyan
+    [32768] = { name = "Singularity", color = {1, 1, 1} }, -- Pure White
+    [65536] = { name = "The Simulation", color = {0.1, 0.1, 0.1} }, -- Void
 }
 
 -- ============================================================================
@@ -64,7 +70,9 @@ Constants.MECHANICS = {
         [256] = 15,  -- A100
         [512] = 25,  -- H100
         [1024] = 40, -- GB200
-        [2048] = 60  -- Jensen's Kitchen
+        [2048] = 60, -- Jensen's Kitchen
+        [4096] = 80,
+        [8192] = 100
     },
     THERMAL_THRESHOLDS = {
         NORMAL = 0,

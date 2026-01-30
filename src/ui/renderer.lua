@@ -627,7 +627,8 @@ function Renderer.drawVictory()
     
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(Renderer.fontLarge)
-    love.graphics.printf("CEO", 0, by + 40, w, "center") -- Center text inside badge (approx)
+    local fh = Renderer.fontLarge:getHeight()
+    love.graphics.printf("CEO", bx, by + badgeSize/2 - fh/2, badgeSize, "center") -- Vertically centered
     
     -- Subtext
     love.graphics.setFont(Renderer.fontLarge)
@@ -942,7 +943,7 @@ function Renderer.drawVictory()
     love.graphics.rectangle("fill", cx - 50, cy - 20, 100, 100, 10, 10)
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(Renderer.fontHuge)
-    love.graphics.print("CEO", cx - 35, cy + 5)
+    love.graphics.print("CEO", cx - 42, cy + 5)
     
     -- Instructions
     local pulse = 0.5 + math.abs(math.sin(time * 3)) * 0.5
