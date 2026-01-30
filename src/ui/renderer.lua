@@ -68,7 +68,7 @@ function Renderer.addTile(tile, meta)
 end
 
 function Renderer.addShake(amount)
-    Renderer.shake = Renderer.shake + amount * Renderer.shakeMultiplier
+    Renderer.shake = math.min(15, Renderer.shake + amount * Renderer.shakeMultiplier)
 end
 
 function Renderer.onMove(moves)
@@ -144,9 +144,9 @@ function Renderer.onMove(moves)
         if maxMergeVal < 64 then
             shake = 0       -- Level 1: No shake (Low tier)
         elseif maxMergeVal < 1024 then
-            shake = 2       -- Level 2: Tiny shake (Mid tier)
+            shake = 1.5     -- Level 2: Tiny shake (Mid tier) - Reduced from 2
         else
-            shake = 6       -- Level 3: Normal shake (High tier)
+            shake = 4       -- Level 3: Normal shake (High tier) - Reduced from 6
         end
         
         if shake > 0 then

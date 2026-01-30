@@ -371,7 +371,7 @@ function love.keypressed(key)
 
                         -- Visual feedback for training bonus
                         Renderer.addScorePopup(move.tile.x, move.tile.y, bonusScore, "training")
-                        Renderer.addShake(2) -- Level 2: Tiny Shake
+                        Renderer.addShake(1.5) -- Level 2: Tiny Shake (Reduced)
                     end
 
                     -- Check if merged tiles were part of an SLI bridge (using pre-move snapshot)
@@ -498,7 +498,7 @@ function love.keypressed(key)
                 if throttled then
                     print(string.format("⚠ THERMAL THROTTLING! Tile at (%d,%d) downgraded: %d → %d", tx, ty, oldVal, newVal))
                     Renderer.updateTileMeta(GameState.grid[ty][tx].id, GameState.getTileMeta(GameState.grid[ty][tx].id), newVal)
-                    Renderer.addShake(6) -- Level 3: Normal Shake
+                    Renderer.addShake(4) -- Level 3: Normal Shake (Reduced)
                     
                     -- Update visual NVLink connections (Post-throttle)
                     local postThrottleBridges = Mechanics.detectSLIBridges(GameState.grid)
