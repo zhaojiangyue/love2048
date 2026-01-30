@@ -229,6 +229,16 @@ function love.keypressed(key)
         return
     end
 
+    -- CHEAT CODE: Ctrl + Alt + F2 (Wipe Save)
+    if key == "f2" and (love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl")) and (love.keyboard.isDown("lalt") or love.keyboard.isDown("ralt")) then
+        Storage.clearSave()
+        GameState.bestScore = 0
+        resetGame()
+        Renderer.addScorePopup(2, 2, "SAVE WIPED", "training")
+        print("CHEAT EXECUTED: Save data wiped and game reset.")
+        return
+    end
+
     -- DLSS upscaling (SPACE key) - REDESIGNED: Upgrade ANY tile!
     if key == "space" then
         if GameState.state == "playing" then

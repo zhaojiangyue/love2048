@@ -364,6 +364,20 @@ function Renderer.update(dt)
     end
 end
 
+function Renderer.formatScore(n)
+    if n >= 1000000000000 then
+        return string.format("%.1fT", n / 1000000000000)
+    elseif n >= 1000000000 then
+        return string.format("%.1fB", n / 1000000000)
+    elseif n >= 1000000 then
+        return string.format("%.1fM", n / 1000000)
+    elseif n >= 1000 then
+        return string.format("%.1fK", n / 1000)
+    else
+        return tostring(n)
+    end
+end
+
 function Renderer.draw(score, state, bestScore, gameState)
     love.graphics.push()
 
@@ -383,8 +397,8 @@ function Renderer.draw(score, state, bestScore, gameState)
 
     -- Score and stats
     love.graphics.setFont(Renderer.fontLarge)
-    love.graphics.print("Score: " .. score, 20, 80)
-    love.graphics.print("Best: " .. (bestScore or 0), 220, 80)
+    love.graphics.print("Score: " .. Renderer.formatScore(score), 20, 80)
+    love.graphics.print("Best: " .. Renderer.formatScore(bestScore or 0), 220, 80)
 
     -- Heat meter (if gameState provided)
     if gameState and gameState.heatLevel then
