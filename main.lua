@@ -213,6 +213,13 @@ function love.keypressed(key)
                         print(string.format("DLSS Upscaling! %d → %d (+%d points). Charges: %d/3",
                             oldVal, tile.val, bonusScore, GameState.dlssCharges))
 
+                        -- CHECK FOR VICTORY (Jensen's Kitchen)
+                        if not GameState.hasWon and tile.val == 2048 then
+                            GameState.hasWon = true
+                            GameState.state = "won"
+                            print("WINNER! Triggering Victory Screen (via DLSS).")
+                        end
+
                         GameState.selectedTileForDLSS = nil
                     else
                         print(bonusScore) -- Error message
@@ -257,6 +264,10 @@ function love.keypressed(key)
         return
     end
 
+
+
+
+
     -- Handle Splash Screen Input (Any key starts game)
     if GameState.state == "splash" then
         -- Exclude modifier keys to prevent accidental starts while tabbing
@@ -285,6 +296,10 @@ function love.keypressed(key)
     local moved, scoreAdd, moves = false, 0, {}
 
     if key == "left" or key == "right" or key == "up" or key == "down" then
+        -- Detect SLI bridges BEFORE the move to apply bonuses correctly
+        -- The move destroys the original tiles, so we must snapshot the state first.
+        local preMoveSLIBridges = Mechanics.detectSLIBridges(GameState.grid)
+
         moved, scoreAdd, moves = Logic.move(GameState.grid, key)
 
         if moved then
@@ -312,8 +327,7 @@ function love.keypressed(key)
             end
 
             -- Apply training bonus to score from merges
-            -- Also detect SLI bridge formations for bonus multipliers
-            local sliBridges = Mechanics.detectSLIBridges(GameState.grid)
+            -- Also check pre-move SLI bridges for bonus multipliers
             local mergedTileIds = {}
 
             for _, move in ipairs(moves) do
@@ -323,8 +337,11 @@ function love.keypressed(key)
                     if move.target then table.insert(mergedTileIds, move.target.id) end
 
                     -- Show base merge score
+                    -- Show base merge score (Only for Level 2+ tiles)
                     local baseMergeScore = move.tile.val
-                    Renderer.addScorePopup(move.tile.x, move.tile.y, baseMergeScore, "merge")
+                    if baseMergeScore >= 64 then
+                        Renderer.addScorePopup(move.tile.x, move.tile.y, baseMergeScore, "merge")
+                    end
 
                     -- Check if either source or target was trained
                     local sourceMeta = move.source and GameState.tileMeta[move.source.id]
@@ -339,11 +356,11 @@ function love.keypressed(key)
 
                         -- Visual feedback for training bonus
                         Renderer.addScorePopup(move.tile.x, move.tile.y, bonusScore, "training")
-                        Renderer.addShake(3)
+                        Renderer.addShake(2) -- Level 2: Tiny Shake
                     end
 
-                    -- Check if merged tiles were part of an SLI bridge
-                    for _, bridge in ipairs(sliBridges) do
+                    -- Check if merged tiles were part of an SLI bridge (using pre-move snapshot)
+                    for _, bridge in ipairs(preMoveSLIBridges) do
                         local inBridge = false
                         local bridgeTileIds = {}
 
@@ -413,7 +430,8 @@ function love.keypressed(key)
 
                             -- Show score popup for tensor cascade
                             Renderer.addScorePopup(cx, cy, cascadeBonus, "tensor")
-                            Renderer.addShake(4)
+                            Renderer.addShake(8) -- Level 4: Shake + Visuals
+
 
                             print(string.format("Tensor cascade! Boosted tile at (%d,%d) from %d to %d (+%d points)",
                                 cx, cy, oldVal, newVal, cascadeBonus))
@@ -425,13 +443,19 @@ function love.keypressed(key)
             -- Animate moves
             Renderer.onMove(moves)
 
+            -- Update visual NVLink connections (Post-move)
+            local postMoveSLIBridges = Mechanics.detectSLIBridges(GameState.grid)
+            local connections = Mechanics.getSLIConnections(postMoveSLIBridges)
+            Renderer.setSLIConnections(connections)
+
             -- Update visual metadata for all tiles on board
             for y = 1, 4 do
                 for x = 1, 4 do
                     local tile = GameState.grid[y][x]
                     if tile then
                         local meta = GameState.getTileMeta(tile.id)
-                        Renderer.updateTileMeta(tile.id, meta)
+                        -- Sync BOTH metadata AND value to ensure visuals always match logic
+                        Renderer.updateTileMeta(tile.id, meta, tile.val)
                     end
                 end
             end
@@ -459,7 +483,12 @@ function love.keypressed(key)
                 if throttled then
                     print(string.format("⚠ THERMAL THROTTLING! Tile at (%d,%d) downgraded: %d → %d", tx, ty, oldVal, newVal))
                     Renderer.updateTileMeta(GameState.grid[ty][tx].id, GameState.getTileMeta(GameState.grid[ty][tx].id), newVal)
-                    Renderer.addShake(8)
+                    Renderer.addShake(6) -- Level 3: Normal Shake
+                    
+                    -- Update visual NVLink connections (Post-throttle)
+                    local postThrottleBridges = Mechanics.detectSLIBridges(GameState.grid)
+                    local connections = Mechanics.getSLIConnections(postThrottleBridges)
+                    Renderer.setSLIConnections(connections)
                 end
             end
 

@@ -108,9 +108,6 @@ function Mechanics.applyThermalThrottling(grid, heatLevel)
             local oldVal = target.tile.val
             target.tile.val = math.max(2, target.tile.val / 2)
 
-            -- Visual feedback
-            Renderer.updateTileMeta(target.tile.id, GameState.getTileMeta(target.tile.id))
-
             return true, target.x, target.y, oldVal, target.tile.val
         end
     end
@@ -263,8 +260,10 @@ Mechanics.DLSS_REGEN_POINTS = 500  -- Points needed to regenerate 1 charge (ever
 -- Apply DLSS upscaling to ANY tile - strategic power-up!
 function Mechanics.applyDLSS(tile)
     -- Can't upgrade max tier
-    if tile.val >= 2048 then
-        return false, "Cannot upgrade max tier tile!"
+    -- Can't upgrade max tier OR the tier just before it
+    -- You must manually merge for the final victory (Jensen's Kitchen)
+    if tile.val >= 1024 then
+        return false, "Cannot use DLSS on GB200! You must merge manually to reach Jensen's Kitchen."
     end
 
     -- Upscale tile (double its value)
@@ -289,92 +288,57 @@ function Mechanics.checkDLSSRegen(currentScore, previousScore, currentCharges)
 end
 
 -- Detect SLI bridges (adjacent identical tiles)
+-- Detect SLI bridges (connected groups of identical tiles) using Flood Fill
 function Mechanics.detectSLIBridges(grid)
     local bridges = {}
-    local processed = {}
+    local processed = {} -- Set of processed tile IDs
 
     for y = 1, 4 do
         for x = 1, 4 do
-            local tile = grid[y][x]
-            if tile and not processed[tile.id] then
-                local bridge = {tile}
-                local bridgePositions = {{x, y}}
-                processed[tile.id] = true
-
-                -- Check right
-                local nx = x + 1
-                if nx <= 4 then
-                    local rightTile = grid[y][nx]
-                    if rightTile and rightTile.val == tile.val and not processed[rightTile.id] then
-                        table.insert(bridge, rightTile)
-                        table.insert(bridgePositions, {nx, y})
-                        processed[rightTile.id] = true
-
-                        -- Check for third tile
-                        nx = nx + 1
-                        if nx <= 4 then
-                            local tile3 = grid[y][nx]
-                            if tile3 and tile3.val == tile.val and not processed[tile3.id] then
-                                table.insert(bridge, tile3)
-                                table.insert(bridgePositions, {nx, y})
-                                processed[tile3.id] = true
-
-                                -- Check for fourth tile
-                                nx = nx + 1
-                                if nx <= 4 then
-                                    local tile4 = grid[y][nx]
-                                    if tile4 and tile4.val == tile.val and not processed[tile4.id] then
-                                        table.insert(bridge, tile4)
-                                        table.insert(bridgePositions, {nx, y})
-                                        processed[tile4.id] = true
-                                    end
-                                end
+            local startTile = grid[y][x]
+            if startTile and not processed[startTile.id] then
+                -- Start a new cluster search
+                local cluster = {startTile}
+                local clusterPositions = {{x, y}}
+                processed[startTile.id] = true
+                
+                -- Queue for BFS
+                local queue = {{tile=startTile, x=x, y=y}}
+                local head = 1
+                
+                while head <= #queue do
+                    local curr = queue[head]
+                    head = head + 1
+                    
+                    -- Check all 4 neighbors
+                    local neighbors = {
+                        {x = curr.x + 1, y = curr.y}, -- Right
+                        {x = curr.x - 1, y = curr.y}, -- Left
+                        {x = curr.x, y = curr.y + 1}, -- Down
+                        {x = curr.x, y = curr.y - 1}  -- Up
+                    }
+                    
+                    for _, pos in ipairs(neighbors) do
+                        if pos.x >= 1 and pos.x <= 4 and pos.y >= 1 and pos.y <= 4 then
+                            local neighborTile = grid[pos.y][pos.x]
+                            
+                            -- If match found and not processed
+                            if neighborTile and neighborTile.val == startTile.val and not processed[neighborTile.id] then
+                                table.insert(cluster, neighborTile)
+                                table.insert(clusterPositions, {pos.x, pos.y})
+                                processed[neighborTile.id] = true
+                                table.insert(queue, {tile=neighborTile, x=pos.x, y=pos.y})
                             end
                         end
                     end
                 end
 
-                -- Check down (only if not already in horizontal bridge)
-                if #bridge == 1 then
-                    local ny = y + 1
-                    if ny <= 4 then
-                        local downTile = grid[ny][x]
-                        if downTile and downTile.val == tile.val and not processed[downTile.id] then
-                            table.insert(bridge, downTile)
-                            table.insert(bridgePositions, {x, ny})
-                            processed[downTile.id] = true
-
-                            -- Check for third tile
-                            ny = ny + 1
-                            if ny <= 4 then
-                                local tile3 = grid[ny][x]
-                                if tile3 and tile3.val == tile.val and not processed[tile3.id] then
-                                    table.insert(bridge, tile3)
-                                    table.insert(bridgePositions, {x, ny})
-                                    processed[tile3.id] = true
-
-                                    -- Check for fourth tile
-                                    ny = ny + 1
-                                    if ny <= 4 then
-                                        local tile4 = grid[ny][x]
-                                        if tile4 and tile4.val == tile.val and not processed[tile4.id] then
-                                            table.insert(bridge, tile4)
-                                            table.insert(bridgePositions, {x, ny})
-                                            processed[tile4.id] = true
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-
-                -- Only record bridges with 2+ tiles
-                if #bridge >= 2 then
+                -- If valid bridge (2+ tiles), save it
+                if #cluster >= 2 then
                     table.insert(bridges, {
-                        tiles = bridge,
-                        positions = bridgePositions,
-                        count = #bridge
+                        tiles = cluster,
+                        positions = clusterPositions,
+                        count = #cluster
                     })
                 end
             end
@@ -396,16 +360,35 @@ function Mechanics.getSLIBridgeBonus(bridgeCount)
     return 1.0
 end
 
--- Get visual connections for renderer
+-- Get visual connections for renderer (all adjacent pairs in a bridge)
 function Mechanics.getSLIConnections(bridges)
     local connections = {}
 
     for _, bridge in ipairs(bridges) do
-        for i = 1, #bridge.tiles - 1 do
-            table.insert(connections, {
-                tile1 = bridge.tiles[i].id,
-                tile2 = bridge.tiles[i + 1].id
-            })
+        -- For every tile in the bridge, check every other tile
+        -- If they are adjacent, add a connection
+        for i = 1, #bridge.tiles do
+            local t1 = bridge.tiles[i]
+            -- Only check j > i to avoid duplicates
+            for j = i + 1, #bridge.tiles do
+                local t2 = bridge.tiles[j]
+                
+                -- Check adjacency logic (manhattan distance == 1)
+                -- We need coordinates. Since tiles store logical x/y, we use that.
+                -- Note: logic x/y might be updated by move, but bridge detection runs on current grid.
+                -- Let's trust the tiles' internal x/y or use the positions captured.
+                -- Using tile.x and tile.y should be safe if grid is consistent.
+                
+                local dx = math.abs(t1.x - t2.x)
+                local dy = math.abs(t1.y - t2.y)
+                
+                if (dx == 1 and dy == 0) or (dx == 0 and dy == 1) then
+                     table.insert(connections, {
+                        tile1 = t1.id,
+                        tile2 = t2.id
+                    })
+                end
+            end
         end
     end
 

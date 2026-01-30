@@ -6,8 +6,15 @@ local GameState = {}
 GameState.grid = nil
 GameState.score = 0
 GameState.bestScore = 0
-GameState.state = "playing" -- "playing", "gameover", "paused"
+GameState.state = "playing" -- "playing", "gameover", "paused", "won"
 GameState.moveCount = 0
+
+-- Settings
+GameState.settings = {
+    shakeLevel = 2, -- Default: Tiny Shake (1:Off, 2:Tiny, 3:Normal, 4:Chaos)
+    shakeMultiplier = 0.25,
+    particles = true
+}
 
 -- New mechanics state
 GameState.dlssCharges = 3
@@ -189,7 +196,11 @@ function GameState.export()
         dlssCharges = GameState.dlssCharges,
         heatLevel = GameState.heatLevel,
         tileMeta = GameState.tileMeta,
-        state = GameState.state
+        heatLevel = GameState.heatLevel,
+        tileMeta = GameState.tileMeta,
+        state = GameState.state,
+        hasWon = GameState.hasWon,
+        settings = GameState.settings
     }
 end
 
@@ -205,10 +216,52 @@ function GameState.import(data)
     GameState.state = data.state or "playing"
     GameState.gameOverReason = nil
     GameState.hasWon = data.hasWon or false
+    
+    -- Load settings if present, otherwise default
+    if data.settings then
+        GameState.settings = data.settings
+    else
+        -- Default to Tiny Shake
+        GameState.settings = {
+            shakeLevel = 2,
+            shakeMultiplier = 0.25,
+            particles = true
+        }
+    end
 
     -- Recalculate derived state
     GameState.checkForLQTiles()
     GameState.calculateHeat()
+
+    -- Recalculate derived state
+    GameState.checkForLQTiles()
+    GameState.calculateHeat()
+
+    -- REGENERATE ALL TILE IDs
+    -- The previous bug caused ID collisions in saved games.
+    -- We must issue new unique IDs to all tiles to fix this.
+    Logic.uidCounter = 0
+    local newTileMeta = {}
+    
+    for y = 1, 4 do
+        for x = 1, 4 do
+            if GameState.grid[y][x] then
+                local tile = GameState.grid[y][x]
+                local oldId = tile.id
+                
+                -- Generate new unique ID
+                tile.id = Logic.getUID()
+                
+                -- Migrate metadata to new ID if it exists
+                if GameState.tileMeta[oldId] then
+                    newTileMeta[tile.id] = GameState.tileMeta[oldId]
+                end
+            end
+        end
+    end
+    
+    -- Replace old metadata table with new one
+    GameState.tileMeta = newTileMeta
 end
 
 -- Clean up metadata for tiles that no longer exist

@@ -9,6 +9,8 @@ Renderer.particles = {} -- Particle effects
 Renderer.sliConnections = {} -- SLI bridge visual connections
 Renderer.floatingTexts = {} -- Score popups {text, x, y, vx, vy, life, color, scale}
 Renderer.shake = 0
+Renderer.shakeMultiplier = 1.0 -- Shake intensity multiplier (0.0 - 1.0+)
+Renderer.particlesEnabled = true -- Visual effects toggle
 
 -- Fonts
 Renderer.fontSmall = nil
@@ -66,12 +68,12 @@ function Renderer.addTile(tile, meta)
 end
 
 function Renderer.addShake(amount)
-    Renderer.shake = Renderer.shake + amount
+    Renderer.shake = Renderer.shake + amount * Renderer.shakeMultiplier
 end
 
 function Renderer.onMove(moves)
     -- Handle moves and merges
-    local merged = false
+    local maxMergeVal = 0
     for _, move in ipairs(moves) do
         if move.type == "move" then
             -- Find the visual tile
@@ -82,7 +84,7 @@ function Renderer.onMove(moves)
             end
 
         elseif move.type == "merge" then
-            merged = true
+            if move.tile.val > maxMergeVal then maxMergeVal = move.tile.val end
             -- 1. Animate Source sliding to Target
              local vSource = Renderer.findVisualTile(move.source.id)
              local vTarget = Renderer.findVisualTile(move.target.id)
@@ -122,16 +124,34 @@ function Renderer.onMove(moves)
              local dummy = {v=0}
              local t = flux.to(dummy, 0.15, {v=1})
              t.onComplete = function()
-                 local t2 = flux.to(vNew, 0.15, { scale = 1.1 })
-                 t2.onComplete = function()
-                     flux.to(vNew, 0.1, { scale = 1 })
+                 if move.tile.val >= 64 then
+                     -- Level 2+: Pop animation
+                     local t2 = flux.to(vNew, 0.15, { scale = 1.1 })
+                     t2.onComplete = function()
+                         flux.to(vNew, 0.1, { scale = 1 })
+                     end
+                 else
+                     -- Level 1: No visual effect (Instant appearance)
+                     vNew.scale = 1
                  end
              end
         end
     end
 
-    if merged then
-        Renderer.addShake(5)
+    if maxMergeVal > 0 then
+        -- Dynamic Shake (Gameplay Feedback Levels)
+        local shake = 0
+        if maxMergeVal < 64 then
+            shake = 0       -- Level 1: No shake (Low tier)
+        elseif maxMergeVal < 1024 then
+            shake = 2       -- Level 2: Tiny shake (Mid tier)
+        else
+            shake = 6       -- Level 3: Normal shake (High tier)
+        end
+        
+        if shake > 0 then
+            Renderer.addShake(shake)
+        end
     end
 end
 
@@ -159,6 +179,8 @@ end
 
 -- Particle system for effects
 function Renderer.addTensorCascadeEffect(x, y)
+    if not Renderer.particlesEnabled then return end
+
     -- Create green energy pulse particles
     local drawX, drawY = Renderer.getDrawPos(x, y)
     local centerX = drawX + Constants.TILE_SIZE / 2
@@ -181,6 +203,8 @@ function Renderer.addTensorCascadeEffect(x, y)
 end
 
 function Renderer.addDLSSEffect(x, y)
+    if not Renderer.particlesEnabled then return end
+
     -- Rainbow shimmer effect for AI upscaling
     local drawX, drawY = Renderer.getDrawPos(x, y)
     local centerX = drawX + Constants.TILE_SIZE / 2
@@ -249,6 +273,8 @@ function Renderer.addScorePopup(x, y, score, bonusType)
 end
 
 function Renderer.addMergeParticles(x, y, color)
+    if not Renderer.particlesEnabled then return end
+
     -- Burst effect on merge
     local drawX, drawY = Renderer.getDrawPos(x, y)
     local centerX = drawX + Constants.TILE_SIZE / 2
@@ -668,6 +694,8 @@ function Renderer.drawSLIBridges()
 end
 
 function Renderer.addSLIMergeEffect(x, y)
+    if not Renderer.particlesEnabled then return end
+    
     -- Massive NVLink Surge Effect
     local drawX, drawY = Renderer.getDrawPos(x, y)
     local centerX = drawX + Constants.TILE_SIZE / 2
@@ -680,7 +708,8 @@ function Renderer.addSLIMergeEffect(x, y)
         width = 20,
         life = 0.5, maxLife = 0.5,
         color = {0, 1, 0.8, 1},
-        type = "ring"
+        type = "ring",
+        vx = 0, vy = 0
     }
     table.insert(Renderer.particles, shockwave)
     
@@ -690,7 +719,8 @@ function Renderer.addSLIMergeEffect(x, y)
         radius = 0, maxRadius = 150, -- Solid circle flash
         life = 0.2, maxLife = 0.2,
         color = {0.8, 1, 0.9, 0.8},
-        type = "flash"
+        type = "flash",
+        vx = 0, vy = 0
     }
     table.insert(Renderer.particles, flash)
     
@@ -826,7 +856,7 @@ function Renderer.drawVictory()
     love.graphics.rectangle("fill", cx - 50, cy - 20, 100, 100, 10, 10)
     love.graphics.setColor(1, 1, 1)
     love.graphics.setFont(Renderer.fontHuge)
-    love.graphics.print("2048", cx - 45, cy + 5)
+    love.graphics.print("CEO", cx - 35, cy + 5)
     
     -- Instructions
     local pulse = 0.5 + math.abs(math.sin(time * 3)) * 0.5
