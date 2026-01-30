@@ -50,7 +50,7 @@ Constants.TIERS = {
     [256] = { name = "A100", color = {0.8, 0.5, 0.1} },
     [512] = { name = "H100", color = {0.9, 0.1, 0.1} },
     [1024] = { name = "GB200", color = {0.5, 0.1, 0.9} },
-    [2048] = { name = "Jensen's\nKitchen", color = {1, 0.84, 0} }, -- Gold
+    [2048] = { name = "Jensen's\nKitchen", color = {1, 0.84, 0}, textColor = {0, 0, 0} }, -- Gold, Black Text
     -- Endless Mode Tiers (Darker backgrounds for white text visibility)
     [4096] = { name = "Quantum Core", color = {0.3, 0.3, 0.5} }, -- Dark Slate Blue
     [8192] = { name = "Dyson Swarm", color = {0.6, 0.1, 0.4} }, -- Deep Magenta

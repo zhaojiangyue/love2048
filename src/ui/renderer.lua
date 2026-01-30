@@ -509,21 +509,32 @@ function Renderer.draw(score, state, bestScore, gameState)
          end
 
          -- Text
+         -- Text
          if tier then
-            love.graphics.setColor(1, 1, 1, vt.opacity)
+            -- Determine font color
+            local txtColor = tier.textColor or {1, 1, 1}
+            love.graphics.setColor(txtColor[1], txtColor[2], txtColor[3], vt.opacity)
+            
             local txt = tier.name
-             -- Dynamic font sizing
+            local limit = size - 6 -- Padding
+            
+            -- Intelligent Font Selection
+            -- 1. Try Large Font
             local font = Renderer.fontLarge
-            if string.len(txt) > 8 then font = Renderer.fontSmall end
+            local width, lines = font:getWrap(txt, limit)
+            local textHeight = #lines * font:getHeight()
+            
+            -- 2. If too tall, fallback to Small Font
+            if textHeight > (size - 10) then
+                font = Renderer.fontSmall
+                width, lines = font:getWrap(txt, limit)
+                textHeight = #lines * font:getHeight()
+            end
+            
             love.graphics.setFont(font)
-
-            local w = font:getWidth(txt)
-            local h = font:getHeight()
-
-            -- Center text in the zoomed rect
-            love.graphics.print(txt,
-                vt.x + offset + size/2 - w/2,
-                vt.y + offset + size/2 - h/2)
+            
+            -- Draw Vertically Centered
+            love.graphics.printf(txt, vt.x + offset + 3, vt.y + offset + (size - textHeight)/2, limit, "center")
          end
 
          -- LQ indicator
