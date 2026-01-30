@@ -310,6 +310,16 @@ function Renderer.update(dt)
         p.y = p.y + p.vy * dt
         p.life = p.life - dt
         
+        -- Apply gravity (Confetti)
+        if p.gravity then
+            p.vy = p.vy + p.gravity * dt
+        end
+        
+        -- Spin logic (Confetti)
+        if p.spin then
+            p.angle = (p.angle or 0) + p.spin * dt
+        end
+        
         if p.drag then
             p.vx = p.vx * (1 - p.drag * dt)
             p.vy = p.vy * (1 - p.drag * dt)
@@ -535,6 +545,12 @@ function Renderer.draw(score, state, bestScore, gameState)
              local progress = 1 - (p.life / p.maxLife)
              local r = p.maxRadius * progress
              love.graphics.circle("fill", p.x, p.y, r)
+        elseif p.type == "confetti" then
+             love.graphics.push()
+             love.graphics.translate(p.x, p.y)
+             love.graphics.rotate(p.angle or 0)
+             love.graphics.rectangle("fill", -p.size/2, -p.size/2, p.size, p.size*0.6)
+             love.graphics.pop()
         else
             love.graphics.circle("fill", p.x, p.y, p.size * (p.life / p.maxLife))
         end
@@ -577,8 +593,78 @@ function Renderer.draw(score, state, bestScore, gameState)
         love.graphics.setColor(1, 1, 1)
         love.graphics.printf("Click to Reboot", 0, 380, love.graphics.getWidth(), "center")
         return
+    elseif state == "won" then
+        love.graphics.pop()
+        Renderer.drawVictory()
+        return
     else
         love.graphics.pop()
+    end
+end
+
+function Renderer.drawVictory()
+    love.graphics.setColor(0, 0, 0, 0.9) -- Darker background
+    love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+    
+    local w = love.graphics.getWidth()
+    local h = love.graphics.getHeight()
+    local cy = h / 2
+    
+    -- Gold Theme for Jensen's Kitchen
+    love.graphics.setColor(1, 0.84, 0) -- Gold
+    love.graphics.setFont(Renderer.fontHuge)
+    
+    -- Centered Layout
+    love.graphics.printf("YOU REACHED", 0, cy - 150, w, "center")
+    love.graphics.printf("JENSEN'S KITCHEN", 0, cy - 90, w, "center")
+    
+    -- CEO Badge (Yellow Square)
+    local badgeSize = 120
+    local bx = w/2 - badgeSize/2
+    local by = cy - 20
+    love.graphics.setColor(1, 0.8, 0)
+    love.graphics.rectangle("fill", bx, by, badgeSize, badgeSize, 10, 10)
+    
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.setFont(Renderer.fontLarge)
+    love.graphics.printf("CEO", 0, by + 40, w, "center") -- Center text inside badge (approx)
+    
+    -- Subtext
+    love.graphics.setFont(Renderer.fontLarge)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf("The ultimate culinary experience.", 0, cy + 130, w, "center")
+    
+    -- Options
+    love.graphics.setFont(Renderer.fontSmall)
+    love.graphics.setColor(0.7, 0.7, 0.7)
+    love.graphics.printf("Press ENTER to Continue (Endless Mode)", 0, cy + 180, w, "center")
+    love.graphics.printf("Press ESC to Quit", 0, cy + 210, w, "center")
+end
+
+function Renderer.addConfetti()
+    for i=1, 150 do
+        local x = math.random(0, love.graphics.getWidth())
+        local y = math.random(-love.graphics.getHeight(), 0) -- Start above screen
+        local colors = {
+            {1, 0.84, 0, 1}, -- Gold
+            {0.46, 0.7, 0, 1}, -- NVIDIA Green
+            {1, 1, 1, 1}, -- White
+            {1, 0.2, 0.2, 1} -- Red
+        }
+        local c = colors[math.random(#colors)]
+        
+        table.insert(Renderer.particles, {
+            x = x, y = y,
+            vx = math.random(-50, 50),
+            vy = math.random(100, 300),
+            gravity = 200,
+            life = 5, maxLife = 5,
+            size = math.random(8, 15),
+            color = c,
+            type = "confetti",
+            angle = math.random() * 6.28,
+            spin = math.random(-5, 5)
+        })
     end
 end
 

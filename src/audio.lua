@@ -20,6 +20,9 @@ function Audio.load()
         bgmFile = "bgm.wav"
     end
 
+    -- Stop ALL currently playing audio (Global Kill Switch) to prevent overlaps
+    love.audio.stop()
+
     if bgmFile then
         local success, err = pcall(function()
             Audio.bgm = love.audio.newSource(bgmFile, "stream")

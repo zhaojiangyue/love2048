@@ -63,6 +63,24 @@ function love.update(dt)
         -- Check for LQ tiles
         GameState.checkForLQTiles()
 
+        -- Check for Win Condition (Reached 2048 - Jensen's Kitchen)
+        if not GameState.hasWon then
+            for y = 1, 4 do
+                for x = 1, 4 do
+                    local tile = GameState.grid[y][x]
+                    if tile and tile.val >= 2048 then
+                        GameState.state = "won"
+                        GameState.hasWon = true
+                        Renderer.addShake(20) -- Massive shake for victory
+                        Renderer.addConfetti() -- Celebration!
+                        print("VICTORY! Jensen's Kitchen reached!")
+                        break
+                    end
+                end
+                if GameState.state == "won" then break end
+            end
+        end
+
         -- Detect and display SLI bridges
         if GameState.state == "playing" then
             local bridges = Mechanics.detectSLIBridges(GameState.grid)
@@ -168,6 +186,45 @@ function love.keypressed(key)
         else
             -- Just R pressed - show hint
             print("Press Ctrl+R to restart the game")
+        end
+        return
+    end
+
+    -- CHEAT CODE: Ctrl + Alt + F1 (Level up connected items)
+    if key == "f1" and (love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl")) and (love.keyboard.isDown("lalt") or love.keyboard.isDown("ralt")) then
+        local bridges = Mechanics.detectSLIBridges(GameState.grid)
+        local cheated = false
+        if #bridges > 0 then
+            -- Find a bridge with at least 2 tiles
+            for _, bridge in ipairs(bridges) do
+                if #bridge.tiles >= 2 then
+                    -- Upgrade first 2 tiles
+                    local t1 = bridge.tiles[1]
+                    local t2 = bridge.tiles[2]
+                    
+                    t1.val = t1.val * 2
+                    t2.val = t2.val * 2
+                    
+                    -- Update visuals
+                    Renderer.updateTileMeta(t1.id, nil, t1.val)
+                    Renderer.updateTileMeta(t2.id, nil, t2.val)
+                    
+                    Renderer.addScorePopup(t1.x, t1.y, t1.val, "training")
+                    Renderer.addScorePopup(t2.x, t2.y, t2.val, "training")
+                    Renderer.addShake(10)
+                    print("CHEAT EXECUTED: Upgraded connected tiles!")
+                    cheated = true
+                    
+                    -- Rerun detection to update lines
+                     local newBridges = Mechanics.detectSLIBridges(GameState.grid)
+                     local connections = Mechanics.getSLIConnections(newBridges)
+                     Renderer.setSLIConnections(connections)
+                    break 
+                end
+            end
+        end
+        if not cheated then
+            print("CHEAT FAILED: No connected tiles found.")
         end
         return
     end
