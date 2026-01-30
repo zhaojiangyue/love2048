@@ -46,7 +46,8 @@ Constants.TIERS = {
     [16] = { name = "GTX 1080 Ti", color = {0.2, 0.6, 0.2} },
     [32] = { name = "RTX 2080 Ti", color = {0.2, 0.7, 0.3} },
     [64] = { name = "RTX 3090", color = {0.3, 0.8, 0.4} },
-    [128] = { name = "RTX 4090", color = {0.7, 0.2, 0.2} }, -- Start getting hot/red
+    [64] = { name = "RTX 3090", color = {0.3, 0.8, 0.4} },
+    [128] = { name = "RTX 4090", color = {0.6, 0.3, 0.8} }, -- Changed from Red to Purple (User Request)
     [256] = { name = "A100", color = {0.8, 0.5, 0.1} },
     [512] = { name = "H100", color = {0.9, 0.1, 0.1} },
     [1024] = { name = "GB200", color = {0.5, 0.1, 0.9} },
@@ -65,26 +66,30 @@ Constants.TIERS = {
 
 Constants.MECHANICS = {
     -- Heat Management System
+    -- Heat Management System
     HEAT_VALUES = {
-        [128] = 10,  -- RTX 4090
-        [256] = 15,  -- A100
-        [512] = 25,  -- H100
-        [1024] = 40, -- GB200
-        [2048] = 60, -- Jensen's Kitchen
-        [4096] = 80,
-        [8192] = 100,
-        [16384] = 150,
-        [32768] = 200,
-        [65536] = 300
+        [16] = 1,    -- GTX 1080 Ti (New start point)
+        [32] = 2,    -- RTX 2080 Ti
+        [64] = 4,    -- RTX 3090
+        [128] = 8,   -- RTX 4090
+        [256] = 12,  -- A100
+        [512] = 18,  -- H100
+        [1024] = 25, -- GB200
+        [2048] = 40, -- Jensen's Kitchen (Reduced from 60)
+        [4096] = 55,
+        [8192] = 70,
+        [16384] = 90,
+        [32768] = 110,
+        [65536] = 150
     },
     THERMAL_THRESHOLDS = {
         NORMAL = 0,
-        WARM = 50,
-        HOT = 75,
-        THROTTLING = 90
+        WARM = 40,
+        HOT = 60,
+        THROTTLING = 70 -- Danger Zone starts here!
     },
     HEAT_COOLDOWN_PER_MOVE = 1,
-    THERMAL_THROTTLE_CHANCE = 0.2,  -- 20% chance to downgrade tiles at 90%+ heat
+    THERMAL_THROTTLE_CHANCE = 0.5,  -- 50% chance to downgrade tiles at 70%+ heat
     THERMAL_SCORE_PENALTY_HOT = 0.75,      -- 25% reduction when hot
     THERMAL_SCORE_PENALTY_THROTTLING = 0.5, -- 50% reduction when throttling
 

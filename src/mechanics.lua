@@ -77,14 +77,14 @@ function Mechanics.applyThermalThrottling(grid, heatLevel)
         return false
     end
 
-    -- 50% chance per throttling tick to downgrade a random high-tier tile (Increased for visibility)
-    if math.random() < 0.5 then
+    -- Chance per throttling tick to downgrade a random high-tier tile
+    if math.random() < Constants.MECHANICS.THERMAL_THROTTLE_CHANCE then
         local highTierTiles = {}
 
         for y = 1, 4 do
             for x = 1, 4 do
                 local tile = grid[y][x]
-                if tile and tile.val >= 64 then  -- Target RTX 3090 and above
+                if tile and tile.val >= 16 then  -- Target GTX 1080 Ti and above
                     table.insert(highTierTiles, {tile = tile, x = x, y = y})
                 end
             end

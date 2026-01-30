@@ -41,6 +41,8 @@ function Renderer.reset()
     Renderer.sliConnections = {}
     Renderer.floatingTexts = {}
     Renderer.shake = 0
+    Renderer.heatWasInactive = true -- For activation effect
+    Renderer.heatActivationTime = nil
     flux.clear()
 end
 
@@ -402,11 +404,11 @@ function Renderer.draw(score, state, bestScore, gameState)
     -- Score and stats
     love.graphics.setFont(Renderer.fontLarge)
     love.graphics.print("Score: " .. Renderer.formatScore(score), 20, 80)
-    love.graphics.print("Best: " .. Renderer.formatScore(bestScore or 0), 220, 80)
+    love.graphics.print("Best: " .. Renderer.formatScore(bestScore or 0), 190, 80) -- Moved left to balance spacing
 
-    -- Heat meter (if gameState provided)
+    -- Heat meter (if gameState provided) - positioned to fit on screen
     if gameState and gameState.heatLevel then
-        Renderer.drawHeatMeter(420, 80, gameState.heatLevel)
+        Renderer.drawHeatMeter(360, 80, gameState.heatLevel) -- Spaced equally (170px gaps: 20 -> 190 -> 360)
     end
 
     -- DLSS charges indicator (if gameState provided)
@@ -429,10 +431,28 @@ function Renderer.draw(score, state, bestScore, gameState)
     love.graphics.setColor(Constants.COLORS.BOARD)
     love.graphics.rectangle("fill", startX, startY, totalSize, totalSize, 10, 10)
 
-    -- Heat overlay effect
-    if gameState and gameState.heatLevel and gameState.heatLevel > 50 then
-        local heatAlpha = ((gameState.heatLevel - 50) / 50) * 0.3
-        love.graphics.setColor(1, 0.3, 0, heatAlpha)
+    -- Danger Atmosphere (Heat Overlay)
+    if gameState and gameState.heatLevel and gameState.heatLevel > Constants.MECHANICS.THERMAL_THRESHOLDS.WARM then
+        -- Interpolate intensity (0 at WARM, 1 at 100)
+        local range = 100 - Constants.MECHANICS.THERMAL_THRESHOLDS.WARM
+        local intensity = math.max(0, (gameState.heatLevel - Constants.MECHANICS.THERMAL_THRESHOLDS.WARM) / range)
+        
+        -- Color: Orange -> Red
+        local r = 1
+        local g = 0.4 * (1 - intensity)
+        local b = 0
+        local alpha = intensity * 0.4 -- Max 0.4 opacity
+        
+        -- Pulse Speed: Normal -> Panic Mode
+        local pulseSpeed = 2
+        if gameState.heatLevel >= Constants.MECHANICS.THERMAL_THRESHOLDS.THROTTLING then 
+            pulseSpeed = 10 
+            alpha = alpha * 1.2 -- Boost visibility
+        end
+        
+        alpha = alpha * (0.7 + math.sin(love.timer.getTime() * pulseSpeed) * 0.3)
+        
+        love.graphics.setColor(r, g, b, alpha)
         love.graphics.rectangle("fill", startX, startY, totalSize, totalSize, 10, 10)
     end
 
@@ -631,6 +651,32 @@ function Renderer.draw(score, state, bestScore, gameState)
     end
 end
 
+function Renderer.addHeatTransferEffect(tx, ty)
+    local startX = 495 -- Approximate Center of Heat Meter
+    local startY = 90
+    
+    local dx, dy = Renderer.getDrawPos(tx, ty)
+    local endX = dx + Constants.TILE_SIZE/2
+    local endY = dy + Constants.TILE_SIZE/2
+    
+    local dist = math.sqrt((endX - startX)^2 + (endY - startY)^2)
+    local steps = math.floor(dist / 15)
+    
+    -- Create distinct bolt/stream effect
+    for i=0, steps do
+        local t = i / steps
+        table.insert(Renderer.particles, {
+            x = startX + (endX - startX) * t,
+            y = startY + (endY - startY) * t,
+            vx = math.random(-30, 30), vy = math.random(-30, 30),
+            life = 0.8, maxLife = 0.8,
+            size = math.random(4, 8),
+            color = {1, 0.2, 0, 1}, -- Red
+            size = math.random(5, 10) -- Ensure generic circle drawing works
+        })
+    end
+end
+
 function Renderer.drawVictory()
     love.graphics.setColor(0, 0, 0, 0.9) -- Darker background
     love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
@@ -699,35 +745,93 @@ function Renderer.addConfetti()
 end
 
 function Renderer.drawHeatMeter(x, y, heatLevel)
-    local width = 150
-    local height = 20
+    local width = 120
+    local height = 24 -- Increased to match FontLarge
+    local labelWidth = 70 -- Increased for Large Font "Heat:"
+
+    -- Draw Label on LEFT (always visible)
+    love.graphics.setFont(Renderer.fontLarge) -- Matched with Score/Best
+    
+    -- Text Y offset to align baseline with Score? Score is at Y=80.
+    -- We print this at Y. Score prints at Y. Perfect.
+    
+    -- Score is aligned at Y=80. "Heat:" is at Y.
+    -- Shift bar down slightly to center vertically with text cap-height
+    local barY = y + 4 
+    
+    -- Inactive State (System Cool)
+    if heatLevel <= 0 then
+        love.graphics.setColor(0.4, 0.4, 0.4, 0.5)
+        love.graphics.print("Heat:", x, y)
+        
+        love.graphics.setColor(0.15, 0.15, 0.15, 0.5)
+        love.graphics.rectangle("fill", x + labelWidth, barY, width, height, 3, 3)
+        love.graphics.setColor(0.3, 0.3, 0.3, 0.5)
+        love.graphics.setLineWidth(1)
+        love.graphics.rectangle("line", x + labelWidth, barY, width, height, 3, 3)
+        
+        -- Track inactive state for activation effect
+        Renderer.heatWasInactive = true
+        return
+    end
+
+    -- Active State
+    local barX = x + labelWidth
+    
+    -- Activation Glow Effect (when transitioning from inactive to active)
+    if Renderer.heatWasInactive then
+        Renderer.heatWasInactive = false
+        Renderer.heatActivationTime = love.timer.getTime()
+    end
+    
+    -- Draw activation pulse if recently activated
+    local activationGlow = 0
+    if Renderer.heatActivationTime then
+        local elapsed = love.timer.getTime() - Renderer.heatActivationTime
+        if elapsed < 2.0 then -- 2 second glow
+            activationGlow = (1 - elapsed/2.0) * 0.8
+            -- Draw outer glow
+            love.graphics.setColor(0, 1, 0.5, activationGlow * (0.5 + math.sin(elapsed * 15) * 0.3))
+            love.graphics.setLineWidth(4)
+            love.graphics.rectangle("line", barX - 3, barY - 3, width + 6, height + 6, 5, 5)
+        end
+    end
 
     -- Background
     love.graphics.setColor(0.2, 0.2, 0.2)
-    love.graphics.rectangle("fill", x, y, width, height, 3, 3)
+    love.graphics.rectangle("fill", barX, barY, width, height, 3, 3)
 
-    -- Heat fill
+    -- Heat fill color
     local fillWidth = (heatLevel / 100) * width
-    local heatColor = {0.2, 0.8, 0.3}
+    local heatColor = {0.2, 0.8, 0.3} -- Green
 
-    if heatLevel > 75 then
-        heatColor = {1, 0.2, 0.2}
-    elseif heatLevel > 50 then
-        heatColor = {1, 0.6, 0}
+    if heatLevel >= Constants.MECHANICS.THERMAL_THRESHOLDS.THROTTLING then
+        heatColor = {1, 0.2, 0.2} -- Red
+    elseif heatLevel >= Constants.MECHANICS.THERMAL_THRESHOLDS.HOT then
+        heatColor = {1, 0.6, 0} -- Orange
+    elseif heatLevel >= Constants.MECHANICS.THERMAL_THRESHOLDS.WARM then
+        heatColor = {1, 0.9, 0.2} -- Yellow-ish
     end
 
+    -- Draw Fill
     love.graphics.setColor(heatColor)
-    love.graphics.rectangle("fill", x, y, fillWidth, height, 3, 3)
+    love.graphics.rectangle("fill", barX, barY, fillWidth, height, 3, 3)
 
     -- Border
     love.graphics.setColor(0.5, 0.5, 0.5)
     love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", x, y, width, height, 3, 3)
+    love.graphics.rectangle("line", barX, barY, width, height, 3, 3)
 
-    -- Label
+    -- Label with percentage
     love.graphics.setColor(Constants.COLORS.TEXT)
+    love.graphics.print("Heat:", x, y)
+    
+    -- Percentage inside bar (Small Font for fitting)
     love.graphics.setFont(Renderer.fontSmall)
-    love.graphics.print("Heat: " .. math.floor(heatLevel) .. "%", x + width + 10, y + 2)
+    love.graphics.setColor(1, 1, 1)
+    local pctText = math.floor(heatLevel) .. "%"
+    -- Center vertically relative to BAR Y
+    love.graphics.print(pctText, barX + 5, barY + (height - 14)/2)
 end
 
 function Renderer.drawDLSSCharges(x, y, charges)

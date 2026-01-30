@@ -583,6 +583,7 @@ function love.keypressed(key)
                 if throttled then
                     print(string.format("⚠ THERMAL THROTTLING! Tile at (%d,%d) downgraded: %d → %d", tx, ty, oldVal, newVal))
                     Renderer.updateTileMeta(GameState.grid[ty][tx].id, GameState.getTileMeta(GameState.grid[ty][tx].id), newVal)
+                    Renderer.addHeatTransferEffect(tx, ty) -- Visual feedback: Heat Strike!
                     Renderer.addShake(4) -- Level 3: Normal Shake (Reduced)
                     
                     -- Update visual NVLink connections (Post-throttle)
