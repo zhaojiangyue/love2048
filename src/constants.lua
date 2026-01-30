@@ -50,11 +50,11 @@ Constants.TIERS = {
     [256] = { name = "A100", color = {0.8, 0.5, 0.1} },
     [512] = { name = "H100", color = {0.9, 0.1, 0.1} },
     [1024] = { name = "GB200", color = {0.5, 0.1, 0.9} },
-    [2048] = { name = "Jensen's Kitchen", color = {1, 0.84, 0} }, -- Gold
+    [2048] = { name = "Jensen's\nKitchen", color = {1, 0.84, 0} }, -- Gold
     -- Endless Mode Tiers (Darker backgrounds for white text visibility)
     [4096] = { name = "Quantum Core", color = {0.3, 0.3, 0.5} }, -- Dark Slate Blue
     [8192] = { name = "Dyson Swarm", color = {0.6, 0.1, 0.4} }, -- Deep Magenta
-    [16384] = { name = "Multiverse GPU", color = {0.0, 0.4, 0.5} }, -- Deep Cyan
+    [16384] = { name = "Multiverse\nGPU", color = {0.0, 0.4, 0.5} }, -- Deep Cyan
     [32768] = { name = "Singularity", color = {0.1, 0.0, 0.2} }, -- Void Purple
     [65536] = { name = "The Simulation", color = {0.05, 0.05, 0.05} }, -- Almost Black
 }

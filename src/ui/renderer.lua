@@ -925,10 +925,27 @@ function Renderer.drawVictory()
     -- Golden Victory Overlay
     love.graphics.clear(0.1, 0.1, 0, 1) -- Dark gold/brown background
     
-    -- Draw particles in background
+    -- Draw particles in background (Robust)
     for _, p in ipairs(Renderer.particles) do
         love.graphics.setColor(p.color)
-        love.graphics.circle("fill", p.x, p.y, p.size * (p.life / p.maxLife))
+        if p.type == "ring" then
+             local progress = 1 - (p.life / p.maxLife)
+             local r = p.radius + (p.maxRadius - p.radius) * progress
+             love.graphics.setLineWidth(p.width * (1-progress))
+             love.graphics.circle("line", p.x, p.y, r)
+        elseif p.type == "flash" then
+             local progress = 1 - (p.life / p.maxLife)
+             local r = p.maxRadius * progress
+             love.graphics.circle("fill", p.x, p.y, r)
+        elseif p.type == "confetti" then
+             love.graphics.push()
+             love.graphics.translate(p.x, p.y)
+             love.graphics.rotate(p.angle or 0)
+             love.graphics.rectangle("fill", -p.size/2, -p.size/2, p.size, p.size*0.6)
+             love.graphics.pop()
+        elseif p.size then
+            love.graphics.circle("fill", p.x, p.y, p.size * (p.life / p.maxLife))
+        end
     end
     
     local cx = love.graphics.getWidth() / 2

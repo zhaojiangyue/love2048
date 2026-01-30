@@ -607,6 +607,8 @@ function love.keypressed(key)
                         if tile and tile.val == 2048 then
                             GameState.hasWon = true
                             GameState.state = "won"
+                            Renderer.addConfetti() -- Trigger confetti immediately!
+                            Renderer.addShake(20)
                             print("WINNER! Triggering Victory Screen.")
                         end
                     end
