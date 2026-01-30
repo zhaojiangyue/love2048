@@ -68,19 +68,19 @@ Constants.MECHANICS = {
     -- Heat Management System
     -- Heat Management System
     HEAT_VALUES = {
-        [16] = 1,    -- GTX 1080 Ti (New start point)
-        [32] = 2,    -- RTX 2080 Ti
-        [64] = 4,    -- RTX 3090
-        [128] = 8,   -- RTX 4090
-        [256] = 12,  -- A100
-        [512] = 18,  -- H100
-        [1024] = 25, -- GB200
-        [2048] = 40, -- Jensen's Kitchen (Reduced from 60)
-        [4096] = 55,
-        [8192] = 70,
-        [16384] = 90,
-        [32768] = 110,
-        [65536] = 150
+        [16] = 5,    -- GTX 1080 Ti (Starts feeling the pressure!)
+        [32] = 8,    -- RTX 2080 Ti (2x16=10 -> 8. Merging cools!)
+        [64] = 14,   -- RTX 3090 (2x32=16 -> 14)
+        [128] = 24,  -- RTX 4090 (2x64=28 -> 24. A pair is ~50% heat!)
+        [256] = 40,  -- A100 (2x128=48 -> 40)
+        [512] = 60,  -- H100 (Serious heat)
+        [1024] = 85, -- GB200 (Throttling Zone)
+        [2048] = 100, -- Jensen's Kitchen (Max Heat!)
+        [4096] = 120,
+        [8192] = 140,
+        [16384] = 160,
+        [32768] = 180,
+        [65536] = 200
     },
     THERMAL_THRESHOLDS = {
         NORMAL = 0,

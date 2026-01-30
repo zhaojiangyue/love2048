@@ -69,6 +69,23 @@ function Renderer.addTile(tile, meta)
     flux.to(vt, 0.2, { scale = 1 })
 end
 
+-- Update visual tile data (e.g. after downgrade)
+function Renderer.updateTileMeta(id, meta, val)
+    for _, vt in ipairs(Renderer.visualTiles) do
+        if vt.id == id then
+            vt.val = val
+            -- Update other visual properties if provided in user metadata
+            if meta then
+                 vt.training = meta.training or vt.training
+                 vt.overtrained = meta.overtrained or vt.overtrained
+                 vt.overtrainedMoves = meta.overtrainedMoves or vt.overtrainedMoves
+                 vt.isLQ = meta.isLQ or vt.isLQ
+            end
+            return
+        end
+    end
+end
+
 function Renderer.addShake(amount)
     Renderer.shake = math.min(15, Renderer.shake + amount * Renderer.shakeMultiplier)
 end
@@ -275,6 +292,22 @@ function Renderer.addScorePopup(x, y, score, bonusType)
         maxLife = 1.5,
         color = color,
         scale = scale
+    })
+end
+
+-- Generic floating text for alerts and notifications
+function Renderer.addFloatingText(text, x, y, color, duration)
+    duration = duration or 2.0
+    table.insert(Renderer.floatingTexts, {
+        text = text,
+        x = x,
+        y = y,
+        vx = 0,
+        vy = -30, -- Float upward slowly
+        life = duration,
+        maxLife = duration,
+        color = color or {1, 1, 1, 1},
+        scale = 1.2
     })
 end
 
@@ -782,18 +815,24 @@ function Renderer.drawHeatMeter(x, y, heatLevel)
     if Renderer.heatWasInactive then
         Renderer.heatWasInactive = false
         Renderer.heatActivationTime = love.timer.getTime()
+        -- Add dramatic alert when heat system activates!
+        Renderer.addFloatingText("⚠ THERMAL MONITORING ACTIVE", love.graphics.getWidth()/2, 140, {1, 0.5, 0, 1}, 2.5)
+        Renderer.addShake(3) -- Slight shake to grab attention
     end
     
-    -- Draw activation pulse if recently activated
-    local activationGlow = 0
+    -- Draw activation pulse if recently activated (3 seconds, warning colors)
     if Renderer.heatActivationTime then
         local elapsed = love.timer.getTime() - Renderer.heatActivationTime
-        if elapsed < 2.0 then -- 2 second glow
-            activationGlow = (1 - elapsed/2.0) * 0.8
-            -- Draw outer glow
-            love.graphics.setColor(0, 1, 0.5, activationGlow * (0.5 + math.sin(elapsed * 15) * 0.3))
-            love.graphics.setLineWidth(4)
-            love.graphics.rectangle("line", barX - 3, barY - 3, width + 6, height + 6, 5, 5)
+        if elapsed < 3.0 then -- 3 second dramatic glow
+            local intensity = (1 - elapsed/3.0)
+            -- Pulsing orange/red warning glow
+            local pulse = 0.6 + math.sin(elapsed * 12) * 0.4
+            love.graphics.setColor(1, 0.4, 0, intensity * pulse)
+            love.graphics.setLineWidth(4 + math.sin(elapsed * 15) * 2)
+            love.graphics.rectangle("line", barX - 4, barY - 4, width + 8, height + 8, 6, 6)
+            -- Inner glow
+            love.graphics.setColor(1, 0.6, 0.1, intensity * 0.3)
+            love.graphics.rectangle("fill", barX - 2, barY - 2, width + 4, height + 4, 4, 4)
         end
     end
 

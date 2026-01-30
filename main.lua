@@ -577,8 +577,8 @@ function love.keypressed(key)
                 print(string.format("DLSS charge regenerated! Charges: %d/3 - Press SPACE to boost a tile!", GameState.dlssCharges))
             end
 
-            -- Apply thermal throttling when heat >= 90%
-            if GameState.heatLevel >= 90 then
+            -- Apply thermal throttling when heat >= Throttling Threshold
+            if GameState.heatLevel >= Constants.MECHANICS.THERMAL_THRESHOLDS.THROTTLING then
                 local throttled, tx, ty, oldVal, newVal = Mechanics.applyThermalThrottling(GameState.grid, GameState.heatLevel)
                 if throttled then
                     print(string.format("⚠ THERMAL THROTTLING! Tile at (%d,%d) downgraded: %d → %d", tx, ty, oldVal, newVal))
