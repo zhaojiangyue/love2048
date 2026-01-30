@@ -158,8 +158,10 @@ function love.keypressed(key)
         -- Otherwise toggle pause
         if GameState.state == "playing" then
             GameState.state = "paused"
+            Audio.pauseBGM()
         elseif GameState.state == "paused" then
             GameState.state = "playing"
+            Audio.playBGM()
         end
         return
     end
@@ -394,6 +396,22 @@ function love.keypressed(key)
                 GameState.tileMeta,
                 GameState.moveCount
             )
+
+            -- Recalculate Heat
+            GameState.calculateHeat()
+
+            -- Apply Thermal Throttling (Downgrade tiles if too hot)
+            local throttled, tx, ty, oldVal, newVal = Mechanics.applyThermalThrottling(GameState.grid, GameState.heatLevel)
+            if throttled then
+                 -- Update visual meta for the downgraded tile
+                 local tile = GameState.grid[ty][tx]
+                 Renderer.updateTileMeta(tile.id, nil, tile.val)
+                 
+                 -- Visual feedback
+                 Renderer.addScorePopup(tx, ty, "THROTTLED", "overheat")
+                 Renderer.addShake(15)
+                 print(string.format("SYSTEM OVERHEAT! Throttling kicked in. Downgraded tile at (%d,%d): %d -> %d", tx, ty, oldVal, newVal))
+            end
 
             if not trainingOk then
                 -- Game over due to overtrained tile
@@ -632,7 +650,9 @@ function love.draw()
 
         -- Show controls
         love.graphics.setFont(Renderer.fontSmall)
-        love.graphics.printf("SPACE: Use DLSS Upscaling (boost any tile)", 0, 370, love.graphics.getWidth(), "center")
+        love.graphics.setColor(1, 1, 0) -- Yellow
+        love.graphics.printf("SPACE: Use DLSS Upgrade tile (except GB200)", 0, 370, love.graphics.getWidth(), "center")
+        love.graphics.setColor(1, 1, 1) -- Reset to White
         love.graphics.printf("Ctrl+R: Restart Game", 0, 395, love.graphics.getWidth(), "center")
     end
 end

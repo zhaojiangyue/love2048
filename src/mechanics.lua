@@ -8,24 +8,10 @@ local Mechanics = {}
 -- HEAT MANAGEMENT SYSTEM
 -- ============================================================================
 
--- Heat contribution values for high-tier tiles - INCREASED for more pressure
-Mechanics.HEAT_VALUES = {
-    [32] = 5,    -- RTX 2080 Ti
-    [64] = 12,   -- RTX 3090
-    [128] = 22,  -- RTX 4090
-    [256] = 35,  -- A100
-    [512] = 50,  -- H100
-    [1024] = 70, -- GB200
-    [2048] = 100 -- Jensen's Kitchen (instant max heat!)
-}
 
--- Thermal state thresholds
-Mechanics.THERMAL_THRESHOLDS = {
-    NORMAL = 0,
-    WARM = 50,
-    HOT = 75,
-    THROTTLING = 90
-}
+-- Heat values are now pulled from Constants.MECHANICS.HEAT_VALUES
+-- Thermal thresholds are now pulled from Constants.MECHANICS.THERMAL_THRESHOLDS
+
 
 -- Calculate heat based on high-tier tiles on board
 function Mechanics.calculateHeat(grid)
@@ -35,7 +21,7 @@ function Mechanics.calculateHeat(grid)
         for x = 1, 4 do
             local tile = grid[y][x]
             if tile then
-                local heatContribution = Mechanics.HEAT_VALUES[tile.val] or 0
+                local heatContribution = Constants.MECHANICS.HEAT_VALUES[tile.val] or 0
                 totalHeat = totalHeat + heatContribution
             end
         end
@@ -45,12 +31,13 @@ function Mechanics.calculateHeat(grid)
 end
 
 -- Get current thermal state based on heat level
+-- Get current thermal state based on heat level
 function Mechanics.getThermalState(heatLevel)
-    if heatLevel >= Mechanics.THERMAL_THRESHOLDS.THROTTLING then
+    if heatLevel >= Constants.MECHANICS.THERMAL_THRESHOLDS.THROTTLING then
         return "throttling"
-    elseif heatLevel >= Mechanics.THERMAL_THRESHOLDS.HOT then
+    elseif heatLevel >= Constants.MECHANICS.THERMAL_THRESHOLDS.HOT then
         return "hot"
-    elseif heatLevel >= Mechanics.THERMAL_THRESHOLDS.WARM then
+    elseif heatLevel >= Constants.MECHANICS.THERMAL_THRESHOLDS.WARM then
         return "warm"
     else
         return "normal"
@@ -86,12 +73,12 @@ end
 
 -- Apply thermal throttling - randomly downgrade tiles when at 90%+ heat
 function Mechanics.applyThermalThrottling(grid, heatLevel)
-    if heatLevel < Mechanics.THERMAL_THRESHOLDS.THROTTLING then
+    if heatLevel < Constants.MECHANICS.THERMAL_THRESHOLDS.THROTTLING then
         return false
     end
 
-    -- 30% chance per throttling tick to downgrade a random high-tier tile (increased from 20%)
-    if math.random() < 0.3 then
+    -- 50% chance per throttling tick to downgrade a random high-tier tile (Increased for visibility)
+    if math.random() < 0.5 then
         local highTierTiles = {}
 
         for y = 1, 4 do

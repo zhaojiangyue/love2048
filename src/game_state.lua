@@ -1,4 +1,5 @@
 local Logic = require("src.game_logic")
+local Constants = require("src.constants")
 
 local GameState = {}
 
@@ -108,17 +109,10 @@ function GameState.updateTraining()
 end
 
 -- Calculate current heat level based on high-tier tiles
+-- Calculate current heat level based on high-tier tiles
 function GameState.calculateHeat()
     local totalHeat = 0
-    local heatValues = {
-        [32] = 5,    -- RTX 2080 Ti
-        [64] = 12,   -- RTX 3090
-        [128] = 22,  -- RTX 4090
-        [256] = 35,  -- A100
-        [512] = 50,  -- H100
-        [1024] = 70, -- GB200
-        [2048] = 100 -- Jensen's Kitchen
-    }
+    local heatValues = Constants.MECHANICS.HEAT_VALUES
 
     for y = 1, 4 do
         for x = 1, 4 do

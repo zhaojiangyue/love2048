@@ -248,6 +248,10 @@ function Renderer.addScorePopup(x, y, score, bonusType)
     elseif bonusType == "tensor" then
         color = {0.2, 0.9, 0.3, 1} -- Green for tensor cascade
         prefix = "+TC:"
+    elseif bonusType == "overheat" then
+        color = {1, 0.2, 0.2, 1} -- Red for throttling
+        prefix = "" -- No prefix, just show the text (e.g. "THROTTLED")
+        scale = 1.0
         scale = 1.2
     elseif bonusType == "dlss" then
         color = {1, 0.5, 1, 1} -- Magenta for DLSS
@@ -413,8 +417,8 @@ function Renderer.draw(score, state, bestScore, gameState)
     -- DLSS selection mode hint
     if gameState and gameState.selectedTileForDLSS then
         love.graphics.setColor(1, 1, 0, 0.8 + math.sin(love.timer.getTime() * 5) * 0.2)
-        love.graphics.setFont(Renderer.fontLarge)
-        love.graphics.print("DLSS MODE: Arrow keys to select, SPACE to upgrade, ESC to cancel", 20, 650)
+        love.graphics.setFont(Renderer.fontSmall)
+        love.graphics.printf("SPACE to UPGRADE | ESC to Cancel", 0, 120, love.graphics.getWidth(), "center")
     end
 
     -- Board Background
@@ -716,33 +720,31 @@ function Renderer.drawHeatMeter(x, y, heatLevel)
 end
 
 function Renderer.drawDLSSCharges(x, y, charges)
-    love.graphics.setColor(Constants.COLORS.TEXT)
+    -- Yellow text to match gameplay frame
+    love.graphics.setColor(1, 1, 0, 1)
     love.graphics.setFont(Renderer.fontSmall)
     love.graphics.print("DLSS: ", x, y)
 
     local offsetX = x + 50
     for i = 1, 3 do
-        local cx = offsetX + (i-1) * 25
+        local cx = offsetX + (i-1) * 20
         local cy = y + 8
 
         if i <= charges then
-            love.graphics.setColor(0.3, 0.8, 1)
+            love.graphics.setColor(1, 1, 0, 1) -- Active: Yellow Bolt
         else
-            love.graphics.setColor(0.2, 0.2, 0.25)
+            love.graphics.setColor(0.2, 0.2, 0.2, 0.5) -- Empty: Dark Gray
         end
 
-        -- Draw lightning bolt shape
-        love.graphics.circle("fill", cx, cy, 8)
-
-        -- Draw simple lightning bolt on top
-        love.graphics.setColor(1, 1, 0.2)
+        -- Draw simple lightning bolt (No circle)
+        -- Scaled up slightly since circle is gone
         love.graphics.polygon("fill",
-            cx - 2, cy - 6,  -- top
-            cx + 1, cy - 1,  -- middle right
-            cx - 1, cy - 1,  -- middle left
-            cx + 2, cy + 6,  -- bottom
-            cx, cy + 1,      -- middle bottom
-            cx - 1, cy + 1   -- middle left bottom
+            cx - 3, cy - 8,
+            cx + 2, cy - 2,
+            cx - 2, cy - 2,
+            cx + 3, cy + 8,
+            cx, cy + 2,
+            cx - 2, cy + 2
         )
     end
 end
@@ -885,7 +887,7 @@ function Renderer.drawSplash()
     
     local manualItems = {
         { title = "THERMAL MANAGEMENT", text = "High-end GPUs generate heat. Avoid hitting 100%!", color = {1, 0.4, 0.4} },
-        { title = "DLSS UPSCALING", text = "Press SPACE to double any tile's value (Requires Charge)", color = {1, 0.5, 1} },
+        { title = "DLSS UPSCALING", text = "Press SPACE to double any tile's value (Requires Charge)", color = {1, 1, 0} }, -- Yellow
         { title = "SLI LINK", text = "Align identical GPUs for massive score multipliers", color = {0.3, 0.8, 1} },
         { title = "NEURAL TRAINING", text = "Old tiles get 'Overtrained' and crash. Merge them fast!", color = {0, 1, 1} }
     }
