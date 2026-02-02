@@ -35,6 +35,7 @@ function love.load()
         if not Logic.canMove(GameState.grid) then
             GameState.state = "gameover"
             GameState.gameOverReason = "no_moves"
+            -- SFX will play when Audio is loaded below
         end
     else
         resetGame()
@@ -85,6 +86,15 @@ function love.update(dt)
         if GameState.state == "playing" then
             local bridges = Mechanics.detectSLIBridges(GameState.grid)
             local connections = Mechanics.getSLIConnections(bridges)
+            
+            -- Play SFX when new SLI bridge forms
+            local currentBridgeCount = #bridges
+            if not Renderer.lastBridgeCount then Renderer.lastBridgeCount = 0 end
+            if currentBridgeCount > Renderer.lastBridgeCount then
+                Audio.playSFX("sli_appear")
+            end
+            Renderer.lastBridgeCount = currentBridgeCount
+            
             Renderer.setSLIConnections(connections)
         elseif GameState.state == "splash" then
              -- Add subtle particle movement on splash
@@ -137,6 +147,9 @@ function resetGame()
         local meta = GameState.getTileMeta(t2.id)
         Renderer.addTile(t2, meta)
     end
+    
+    -- Restart BGM on game reset
+    Audio.playBGM()
 end
 
 function love.keypressed(key)
@@ -417,6 +430,9 @@ function love.keypressed(key)
             -- Apply Thermal Throttling (Downgrade tiles if heat reaches 100%)
             print(string.format("[DEBUG HEAT] Level: %d%%, Cooling: %s, Trigger: %d", GameState.heatLevel, tostring(GameState.coolingMoves or 0), Constants.MECHANICS.THERMAL_THROTTLE_TRIGGER))
             if GameState.heatLevel >= Constants.MECHANICS.THERMAL_THROTTLE_TRIGGER then
+                -- Play heat max warning SFX
+                Audio.playSFX("heat_max")
+                
                 local throttled, tx, ty, oldVal, newVal = Mechanics.applyThermalThrottling(GameState.grid, GameState.heatLevel)
                 if throttled then
                      -- Animated downgrade: old tile shrinks, new tile appears
@@ -429,6 +445,9 @@ function love.keypressed(key)
                      Renderer.addShake(15)
                      print(string.format("SYSTEM OVERHEAT! Throttling kicked in. Downgraded tile at (%d,%d): %d -> %d", tx, ty, oldVal, newVal))
                      
+                     -- Play downgrade SFX
+                     Audio.playSFX("downgrade")
+                     
                      -- Reset heat after throttling
                      GameState.resetHeat()
                      Renderer.heatWasInactive = (GameState.heatLevel <= 0)
@@ -439,6 +458,10 @@ function love.keypressed(key)
                 -- Game over due to overtrained tile
                 GameState.state = "gameover"
                 GameState.gameOverReason = "overtrained"
+                
+                -- Play game over SFX and stop BGM
+                Audio.playSFX("game_over")
+                Audio.stopBGM()
 
                 -- Show which tile caused the failure
                 if failedTile then
@@ -506,6 +529,7 @@ function love.keypressed(key)
                             Renderer.addScorePopup(move.tile.x, move.tile.y, sliBonusScore, "sli")
                             Renderer.addSLIMergeEffect(move.tile.x, move.tile.y) -- Trigger new NVLink surge
                             Renderer.addShake(12) -- Increased shake for impact
+                            Audio.playSFX("sli_merge") -- Play SLI merge sound
 
                             -- Special achievement for 4-tile bridge (Quad-GPU)
                             if bridge.count >= 4 then
@@ -647,6 +671,8 @@ function love.keypressed(key)
             if GameState.state == "playing" and not Logic.canMove(GameState.grid) then
                 GameState.state = "gameover"
                 GameState.gameOverReason = "no_moves"
+                Audio.playSFX("game_over")
+                Audio.stopBGM()
             end
         end
     end

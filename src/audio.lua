@@ -1,12 +1,24 @@
 local Audio = {}
 
 Audio.bgm = nil
-Audio.baseVolume = 0.5
+Audio.baseVolume = 0.4
+Audio.sfxVolume = 0.7
 Audio.isMuted = false
+
+-- SFX Configuration: Add/change sound effects here!
+-- Files should be placed in assets/sfx/ folder
+Audio.sfxConfig = {
+    sli_appear = "assets/sfx/sli_appear.mp3",    -- When SLI bridge forms
+    sli_merge = "assets/sfx/sli_merge.mp3",      -- When SLI tiles merge
+    heat_max = "assets/sfx/heat_max.mp3",        -- When heat reaches 100%
+    downgrade = "assets/sfx/downgrade.mp3",      -- When tile is downgraded
+    game_over = "assets/sfx/game_over.mp3",      -- Game over
+}
+
+Audio.sfx = {}
 
 function Audio.load()
     -- Attempt to load background music from game directory
-    -- Check common formats (Prioritize assets folder)
     local bgmFile = nil
     if love.filesystem.getInfo("assets/bgm.mp3") then
         bgmFile = "assets/bgm.mp3"
@@ -20,7 +32,7 @@ function Audio.load()
         bgmFile = "bgm.wav"
     end
 
-    -- Stop ALL currently playing audio (Global Kill Switch) to prevent overlaps
+    -- Stop ALL currently playing audio
     love.audio.stop()
 
     if bgmFile then
@@ -28,14 +40,32 @@ function Audio.load()
             Audio.bgm = love.audio.newSource(bgmFile, "stream")
             Audio.bgm:setLooping(true)
             Audio.bgm:setVolume(Audio.baseVolume)
-            print("Audio: Reviewing track " .. bgmFile)
+            print("Audio: Loaded BGM " .. bgmFile)
         end)
         
         if not success then
             print("Audio: Failed to load BGM: " .. tostring(err))
         end
     else
-        print("Audio: No 'bgm.mp3/ogg/wav' found in game directory.")
+        print("Audio: No BGM found.")
+    end
+    
+    -- Load SFX
+    for name, path in pairs(Audio.sfxConfig) do
+        if love.filesystem.getInfo(path) then
+            local success, result = pcall(function()
+                return love.audio.newSource(path, "static")
+            end)
+            if success then
+                Audio.sfx[name] = result
+                Audio.sfx[name]:setVolume(Audio.sfxVolume)
+                print("Audio: Loaded SFX " .. name .. " from " .. path)
+            else
+                print("Audio: Failed to load SFX " .. name .. ": " .. tostring(result))
+            end
+        else
+            print("Audio: SFX file not found: " .. path .. " (you can add it later)")
+        end
     end
 end
 
@@ -57,10 +87,29 @@ function Audio.pauseBGM()
     end
 end
 
+-- Play a sound effect by name (see sfxConfig above)
+function Audio.playSFX(name)
+    if Audio.isMuted then return end
+    
+    local sound = Audio.sfx[name]
+    if sound then
+        -- Clone the source so we can play multiple instances
+        sound:stop()
+        sound:play()
+    end
+end
+
 function Audio.setVolume(vol)
     Audio.baseVolume = math.max(0, math.min(1, vol))
     if Audio.bgm then
         Audio.bgm:setVolume(Audio.baseVolume)
+    end
+end
+
+function Audio.setSFXVolume(vol)
+    Audio.sfxVolume = math.max(0, math.min(1, vol))
+    for _, sound in pairs(Audio.sfx) do
+        sound:setVolume(Audio.sfxVolume)
     end
 end
 
