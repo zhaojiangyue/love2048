@@ -855,7 +855,7 @@ function Renderer.drawHeatMeter(x, y, heatLevel)
         Renderer.heatWasInactive = false
         Renderer.heatActivationTime = love.timer.getTime()
         -- Add dramatic alert when heat system activates!
-        Renderer.addFloatingText("⚠ THERMAL MONITORING ACTIVE", love.graphics.getWidth()/2, 140, {1, 0.5, 0, 1}, 2.5)
+        Renderer.addFloatingText("GTX 1080 Ti - HEAT ON!", love.graphics.getWidth()/2, 140, {1, 0.5, 0, 1}, 2.5)
         Renderer.addShake(3) -- Slight shake to grab attention
     end
     
