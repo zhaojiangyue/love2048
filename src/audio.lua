@@ -1,8 +1,9 @@
 local Audio = {}
 
 Audio.bgm = nil
-Audio.baseVolume = 0.4
-Audio.sfxVolume = 0.7
+-- Volume Configuration (adjust these values!)
+Audio.bgmVolume = 0.5   -- Background music volume (0.0 to 1.0)
+Audio.sfxVolume = 0.7  -- Sound effects volume (0.0 to 1.0)
 Audio.isMuted = false
 
 -- SFX Configuration: Add/change sound effects here!
@@ -13,6 +14,7 @@ Audio.sfxConfig = {
     heat_max = "assets/sfx/heat_max.mp3",        -- When heat reaches 100%
     downgrade = "assets/sfx/downgrade.mp3",      -- When tile is downgraded
     game_over = "assets/sfx/game_over.mp3",      -- Game over
+    dlss_upgrade = "assets/sfx/dlss_upgrade.mp3", -- When DLSS upgrades a tile
 }
 
 Audio.sfx = {}
@@ -39,7 +41,7 @@ function Audio.load()
         local success, err = pcall(function()
             Audio.bgm = love.audio.newSource(bgmFile, "stream")
             Audio.bgm:setLooping(true)
-            Audio.bgm:setVolume(Audio.baseVolume)
+            Audio.bgm:setVolume(Audio.bgmVolume)
             print("Audio: Loaded BGM " .. bgmFile)
         end)
         
@@ -99,10 +101,10 @@ function Audio.playSFX(name)
     end
 end
 
-function Audio.setVolume(vol)
-    Audio.baseVolume = math.max(0, math.min(1, vol))
+function Audio.setBGMVolume(vol)
+    Audio.bgmVolume = math.max(0, math.min(1, vol))
     if Audio.bgm then
-        Audio.bgm:setVolume(Audio.baseVolume)
+        Audio.bgm:setVolume(Audio.bgmVolume)
     end
 end
 

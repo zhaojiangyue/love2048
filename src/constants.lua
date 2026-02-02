@@ -87,8 +87,8 @@ Constants.MECHANICS = {
     THERMAL_THRESHOLDS = {
         NORMAL = 0,
         WARM = 40,
-        HOT = 60,
-        THROTTLING = 70 -- Visual warning starts here (orange bar)
+        HOT = 70,
+        THROTTLING = 100 -- Visual warning starts here (orange bar)
     },
     HEAT_COOLDOWN_PER_MOVE = 1,
     HEAT_RESET_PERCENTAGE = 0, -- Heat level after downgrade event (0 = full reset)
@@ -107,7 +107,7 @@ Constants.MECHANICS = {
 
     -- DLSS (AI Upscaling) System
     DLSS_MAX_CHARGES = 3,
-    DLSS_REGEN_POINTS = 1000,  -- Points needed to regenerate 1 charge
+    DLSS_REGEN_POINTS = 3000,  -- Points needed to regenerate 1 charge
     LQ_SPAWN_CHANCE = 0.1,     -- 10% chance to spawn LQ tiles
     DLSS_UPSCALE_MULTIPLIER = 2, -- Doubles tile value
 

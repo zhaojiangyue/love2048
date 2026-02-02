@@ -129,6 +129,7 @@ end
 function GameState.resetHeat()
     GameState.heatLevel = Constants.MECHANICS.HEAT_RESET_PERCENTAGE
     GameState.coolingMoves = Constants.MECHANICS.HEAT_COOLING_MOVES
+    GameState.heatMaxWarningPlayed = false -- Reset so warning can play again
 end
 
 -- Legacy function for compatibility - now just returns current heat

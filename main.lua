@@ -307,6 +307,7 @@ function love.keypressed(key)
                         -- Visual feedback
                         Renderer.addScorePopup(tx, ty, bonusScore, "dlss")
                         Renderer.addShake(6)
+                        Audio.playSFX("dlss_upgrade")
 
                         -- Recalculate heat
                         GameState.calculateHeat()
@@ -430,8 +431,11 @@ function love.keypressed(key)
             -- Apply Thermal Throttling (Downgrade tiles if heat reaches 100%)
             print(string.format("[DEBUG HEAT] Level: %d%%, Cooling: %s, Trigger: %d", GameState.heatLevel, tostring(GameState.coolingMoves or 0), Constants.MECHANICS.THERMAL_THROTTLE_TRIGGER))
             if GameState.heatLevel >= Constants.MECHANICS.THERMAL_THROTTLE_TRIGGER then
-                -- Play heat max warning SFX
-                Audio.playSFX("heat_max")
+                -- Play heat max warning SFX (only once when first hitting 100%)
+                if not GameState.heatMaxWarningPlayed then
+                    Audio.playSFX("heat_max")
+                    GameState.heatMaxWarningPlayed = true
+                end
                 
                 local throttled, tx, ty, oldVal, newVal = Mechanics.applyThermalThrottling(GameState.grid, GameState.heatLevel)
                 if throttled then
