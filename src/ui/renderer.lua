@@ -74,12 +74,34 @@ function Renderer.updateTileMeta(id, meta, val)
     for _, vt in ipairs(Renderer.visualTiles) do
         if vt.id == id then
             vt.val = val
+            -- Trigger throttle flash effect for downgrade visibility
+            vt.throttleFlashTime = love.timer.getTime()
             -- Update other visual properties if provided in user metadata
             if meta then
                  vt.training = meta.training or vt.training
                  vt.overtrained = meta.overtrained or vt.overtrained
                  vt.overtrainedMoves = meta.overtrainedMoves or vt.overtrainedMoves
                  vt.isLQ = meta.isLQ or vt.isLQ
+            end
+            return
+        end
+    end
+end
+
+-- Animated downgrade: tile flashes, shrinks, updates value, scales back up
+function Renderer.animateDowngrade(id, newVal, gridX, gridY)
+    for _, vt in ipairs(Renderer.visualTiles) do
+        if vt.id == id then
+            -- Trigger red flash effect
+            vt.throttleFlashTime = love.timer.getTime()
+            
+            -- Animate shrink to 0, then update value and scale back up
+            local t = flux.to(vt, 0.3, { scale = 0 })
+            t.onComplete = function()
+                -- Update the value (same tile, same ID - stays in sync with grid)
+                vt.val = newVal
+                -- Scale back up with new value
+                flux.to(vt, 0.3, { scale = 1 })
             end
             return
         end
@@ -612,6 +634,23 @@ function Renderer.draw(score, state, bestScore, gameState)
              local text = "!" .. movesLeft
              local tw = Renderer.fontSmall:getWidth(text)
              love.graphics.print(text, vt.x + offset + size - tw - 5, vt.y + offset + 5)
+         end
+
+         -- Throttle Flash Effect (Red overlay fading out after downgrade)
+         if vt.throttleFlashTime then
+             local elapsed = love.timer.getTime() - vt.throttleFlashTime
+             if elapsed < 1.5 then -- 1.5 second flash
+                 local intensity = (1 - elapsed / 1.5)
+                 local pulse = 0.5 + math.sin(elapsed * 15) * 0.5
+                 love.graphics.setColor(1, 0.1, 0.1, intensity * pulse * 0.7)
+                 love.graphics.rectangle("fill", vt.x + offset, vt.y + offset, size, size, 8, 8)
+                 -- Red border
+                 love.graphics.setColor(1, 0, 0, intensity)
+                 love.graphics.setLineWidth(3)
+                 love.graphics.rectangle("line", vt.x + offset, vt.y + offset, size, size, 8, 8)
+             else
+                 vt.throttleFlashTime = nil -- Clear after effect ends
+             end
          end
     end
 

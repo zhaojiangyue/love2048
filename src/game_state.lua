@@ -108,24 +108,56 @@ function GameState.updateTraining()
     return true
 end
 
--- Calculate current heat level based on high-tier tiles
--- Calculate current heat level based on high-tier tiles
-function GameState.calculateHeat()
-    local totalHeat = 0
-    local heatValues = Constants.MECHANICS.HEAT_VALUES
+-- Heat system is INCREMENTAL - heat is added per merge, not recalculated from tiles
+-- Heat only activates when GTX 1080 Ti (16) or higher tiles are merged
 
+-- Add heat when a tile is created by merging
+function GameState.addHeat(tileVal)
+    local heatToAdd = Constants.MECHANICS.HEAT_VALUES[tileVal] or 0
+    if heatToAdd > 0 then
+        GameState.heatLevel = math.min(100, GameState.heatLevel + heatToAdd)
+    end
+    return heatToAdd
+end
+
+-- Get current heat level (just returns current value, no recalculation)
+function GameState.getHeatLevel()
+    return GameState.heatLevel
+end
+
+-- Reset heat after downgrade event
+function GameState.resetHeat()
+    GameState.heatLevel = Constants.MECHANICS.HEAT_RESET_PERCENTAGE
+    GameState.coolingMoves = Constants.MECHANICS.HEAT_COOLING_MOVES
+end
+
+-- Legacy function for compatibility - now just returns current heat
+function GameState.calculateHeat()
+    -- If cooling period is active (after throttle reset), hold heat at reset percentage
+    if GameState.coolingMoves and GameState.coolingMoves > 0 then
+        GameState.heatLevel = Constants.MECHANICS.HEAT_RESET_PERCENTAGE
+    end
+    return GameState.heatLevel
+end
+
+-- Check if board has any heat-generating tiles (for heat bar activation)
+function GameState.hasHeatGeneratingTiles()
     for y = 1, 4 do
         for x = 1, 4 do
             local tile = GameState.grid[y][x]
-            if tile then
-                local heatContribution = heatValues[tile.val] or 0
-                totalHeat = totalHeat + heatContribution
+            if tile and tile.val >= 16 then
+                return true
             end
         end
     end
+    return false
+end
 
-    GameState.heatLevel = math.min(100, totalHeat)
-    return GameState.heatLevel
+-- Decrement cooling moves (call once at start of each move)
+function GameState.decrementCooling()
+    if GameState.coolingMoves and GameState.coolingMoves > 0 then
+        GameState.coolingMoves = GameState.coolingMoves - 1
+    end
 end
 
 -- Cool down heat (called after each move)

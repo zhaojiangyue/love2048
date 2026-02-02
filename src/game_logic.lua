@@ -90,8 +90,8 @@ function Logic.move(grid, direction)
     local moved = false
     local moves = {} -- List of {tile, fromX, fromY, toX, toY, type='move'|'merge'}
     
-    -- Clear merge flags
-    for y=1,4 do for x=1,4 do if grid[y][x] then grid[y][x].merged = false end end end
+    -- Clear merge flags (both merged and justMerged from previous turn)
+    for y=1,4 do for x=1,4 do if grid[y][x] then grid[y][x].merged = false; grid[y][x].justMerged = false end end end
     
     for _, x in ipairs(traverseX) do
         for _, y in ipairs(traverseY) do
@@ -121,7 +121,8 @@ function Logic.move(grid, direction)
                         val = tile.val * 2,
                         x = next.x,
                         y = next.y,
-                        merged = true
+                        merged = true,
+                        justMerged = true -- Protect from throttling this turn
                     }
                     
                     grid[y][x] = nil

@@ -71,9 +71,9 @@ function Mechanics.canSpawnTileValue(value, heatLevel)
     return true
 end
 
--- Apply thermal throttling - randomly downgrade tiles when at 90%+ heat
+-- Apply thermal throttling - downgrade tiles when at 100% heat
 function Mechanics.applyThermalThrottling(grid, heatLevel)
-    if heatLevel < Constants.MECHANICS.THERMAL_THRESHOLDS.THROTTLING then
+    if heatLevel < Constants.MECHANICS.THERMAL_THROTTLE_TRIGGER then
         return false
     end
 
@@ -84,7 +84,8 @@ function Mechanics.applyThermalThrottling(grid, heatLevel)
         for y = 1, 4 do
             for x = 1, 4 do
                 local tile = grid[y][x]
-                if tile and tile.val >= 16 then  -- Target GTX 1080 Ti and above
+                -- Target GTX 1080 Ti and above, but NOT tiles that were just merged
+                if tile and tile.val >= 16 and not tile.justMerged then
                     table.insert(highTierTiles, {tile = tile, x = x, y = y})
                 end
             end

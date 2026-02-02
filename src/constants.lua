@@ -46,7 +46,6 @@ Constants.TIERS = {
     [16] = { name = "GTX 1080 Ti", color = {0.2, 0.6, 0.2} },
     [32] = { name = "RTX 2080 Ti", color = {0.2, 0.7, 0.3} },
     [64] = { name = "RTX 3090", color = {0.3, 0.8, 0.4} },
-    [64] = { name = "RTX 3090", color = {0.3, 0.8, 0.4} },
     [128] = { name = "RTX 4090", color = {0.6, 0.3, 0.8} }, -- Changed from Red to Purple (User Request)
     [256] = { name = "A100", color = {0.8, 0.5, 0.1} },
     [512] = { name = "H100", color = {0.9, 0.1, 0.1} },
@@ -66,30 +65,37 @@ Constants.TIERS = {
 
 Constants.MECHANICS = {
     -- Heat Management System
-    -- Heat Management System
+    -- Heat is ADDED per MERGE when you create a tile of this value
     HEAT_VALUES = {
-        [16] = 5,    -- GTX 1080 Ti (Starts feeling the pressure!)
-        [32] = 8,    -- RTX 2080 Ti (2x16=10 -> 8. Merging cools!)
-        [64] = 14,   -- RTX 3090 (2x32=16 -> 14)
-        [128] = 24,  -- RTX 4090 (2x64=28 -> 24. A pair is ~50% heat!)
-        [256] = 40,  -- A100 (2x128=48 -> 40)
-        [512] = 60,  -- H100 (Serious heat)
-        [1024] = 85, -- GB200 (Throttling Zone)
-        [2048] = 100, -- Jensen's Kitchen (Max Heat!)
-        [4096] = 120,
-        [8192] = 140,
-        [16384] = 160,
-        [32768] = 180,
-        [65536] = 200
+        [2] = 0,     -- GT 210: No heat
+        [4] = 0,     -- GTX 750 Ti: No heat
+        [8] = 0,     -- GTX 970: No heat
+        [16] = 5,    -- GTX 1080 Ti: +5% (Heat activates!)
+        [32] = 10,   -- RTX 2080 Ti: +10%
+        [64] = 15,   -- RTX 3090: +15%
+        [128] = 20,  -- RTX 4090: +20%
+        [256] = 25,  -- A100: +25%
+        [512] = 30,  -- H100: +30%
+        [1024] = 35, -- GB200: +35%
+        [2048] = 0,  -- Jensen's Kitchen: Victory! No heat
+        [4096] = 0,
+        [8192] = 0,
+        [16384] = 0,
+        [32768] = 0,
+        [65536] = 0, -- The Simulation: No heat
     },
     THERMAL_THRESHOLDS = {
         NORMAL = 0,
         WARM = 40,
         HOT = 60,
-        THROTTLING = 70 -- Danger Zone starts here!
+        THROTTLING = 70 -- Visual warning starts here (orange bar)
     },
     HEAT_COOLDOWN_PER_MOVE = 1,
-    THERMAL_THROTTLE_CHANCE = 0.5,  -- 50% chance to downgrade tiles at 70%+ heat
+    HEAT_RESET_PERCENTAGE = 0, -- Heat level after downgrade event (0 = full reset)
+    HEAT_COOLING_MOVES = 2, -- How many moves heat stays at reset (includes immediate decrement)
+    HEAT_RAMP_UP_RATE = 10, -- How much heat increases per move after cooling ends (gradual ramp-up)
+    THERMAL_THROTTLE_TRIGGER = 100, -- Downgrade only happens at 100% heat!
+    THERMAL_THROTTLE_CHANCE = 1.0,  -- 100% chance to downgrade at max heat
     THERMAL_SCORE_PENALTY_HOT = 0.75,      -- 25% reduction when hot
     THERMAL_SCORE_PENALTY_THROTTLING = 0.5, -- 50% reduction when throttling
 

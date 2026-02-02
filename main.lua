@@ -207,6 +207,10 @@ function love.keypressed(key)
                     t1.val = t1.val * 2
                     t2.val = t2.val * 2
                     
+                    -- Add heat for upgrades (same as merging)
+                    GameState.addHeat(t1.val)
+                    GameState.addHeat(t2.val)
+                    
                     -- Update visuals
                     Renderer.updateTileMeta(t1.id, nil, t1.val)
                     Renderer.updateTileMeta(t2.id, nil, t2.val)
@@ -387,6 +391,9 @@ function love.keypressed(key)
         moved, scoreAdd, moves = Logic.move(GameState.grid, key)
 
         if moved then
+            -- Decrement cooling counter (once per move, not per calculateHeat call)
+            GameState.decrementCooling()
+            
             -- Increment move counter
             GameState.moveCount = GameState.moveCount + 1
 
@@ -397,20 +404,35 @@ function love.keypressed(key)
                 GameState.moveCount
             )
 
-            -- Recalculate Heat
+            -- Process heat (only if cooling not active)
             GameState.calculateHeat()
+            
+            -- Add heat for each merge (incremental heat system)
+            for _, move in ipairs(moves) do
+                if move.type == "merge" then
+                    GameState.addHeat(move.tile.val)
+                end
+            end
 
-            -- Apply Thermal Throttling (Downgrade tiles if too hot)
-            local throttled, tx, ty, oldVal, newVal = Mechanics.applyThermalThrottling(GameState.grid, GameState.heatLevel)
-            if throttled then
-                 -- Update visual meta for the downgraded tile
-                 local tile = GameState.grid[ty][tx]
-                 Renderer.updateTileMeta(tile.id, nil, tile.val)
-                 
-                 -- Visual feedback
-                 Renderer.addScorePopup(tx, ty, "THROTTLED", "overheat")
-                 Renderer.addShake(15)
-                 print(string.format("SYSTEM OVERHEAT! Throttling kicked in. Downgraded tile at (%d,%d): %d -> %d", tx, ty, oldVal, newVal))
+            -- Apply Thermal Throttling (Downgrade tiles if heat reaches 100%)
+            print(string.format("[DEBUG HEAT] Level: %d%%, Cooling: %s, Trigger: %d", GameState.heatLevel, tostring(GameState.coolingMoves or 0), Constants.MECHANICS.THERMAL_THROTTLE_TRIGGER))
+            if GameState.heatLevel >= Constants.MECHANICS.THERMAL_THROTTLE_TRIGGER then
+                local throttled, tx, ty, oldVal, newVal = Mechanics.applyThermalThrottling(GameState.grid, GameState.heatLevel)
+                if throttled then
+                     -- Animated downgrade: old tile shrinks, new tile appears
+                     local tile = GameState.grid[ty][tx]
+                     Renderer.animateDowngrade(tile.id, newVal, tx, ty)
+                     Renderer.addHeatTransferEffect(tx, ty)
+                     
+                     -- Visual feedback
+                     Renderer.addScorePopup(tx, ty, "THROTTLED", "overheat")
+                     Renderer.addShake(15)
+                     print(string.format("SYSTEM OVERHEAT! Throttling kicked in. Downgraded tile at (%d,%d): %d -> %d", tx, ty, oldVal, newVal))
+                     
+                     -- Reset heat after throttling
+                     GameState.resetHeat()
+                     Renderer.heatWasInactive = (GameState.heatLevel <= 0)
+                end
             end
 
             if not trainingOk then
@@ -567,8 +589,8 @@ function love.keypressed(key)
                 Renderer.addTile(t, meta)
             end
 
-            -- Cool down heat by 1% per move
-            GameState.coolDown()
+            -- Heat is incremental and doesn't cool down per move (per user design)
+            -- GameState.coolDown()
 
             -- Regenerate DLSS charge every 2000 points using Mechanics module
             local previousScore = GameState.score - scoreAdd
@@ -577,12 +599,13 @@ function love.keypressed(key)
                 print(string.format("DLSS charge regenerated! Charges: %d/3 - Press SPACE to boost a tile!", GameState.dlssCharges))
             end
 
-            -- Apply thermal throttling when heat >= Throttling Threshold
-            if GameState.heatLevel >= Constants.MECHANICS.THERMAL_THRESHOLDS.THROTTLING then
+            -- Apply thermal throttling when heat >= 100% (THERMAL_THROTTLE_TRIGGER)
+            if GameState.heatLevel >= Constants.MECHANICS.THERMAL_THROTTLE_TRIGGER then
                 local throttled, tx, ty, oldVal, newVal = Mechanics.applyThermalThrottling(GameState.grid, GameState.heatLevel)
                 if throttled then
                     print(string.format("⚠ THERMAL THROTTLING! Tile at (%d,%d) downgraded: %d → %d", tx, ty, oldVal, newVal))
-                    Renderer.updateTileMeta(GameState.grid[ty][tx].id, GameState.getTileMeta(GameState.grid[ty][tx].id), newVal)
+                    -- Animated downgrade: old tile shrinks, new tile appears
+                    Renderer.animateDowngrade(GameState.grid[ty][tx].id, newVal, tx, ty)
                     Renderer.addHeatTransferEffect(tx, ty) -- Visual feedback: Heat Strike!
                     Renderer.addShake(4) -- Level 3: Normal Shake (Reduced)
                     
@@ -590,6 +613,10 @@ function love.keypressed(key)
                     local postThrottleBridges = Mechanics.detectSLIBridges(GameState.grid)
                     local connections = Mechanics.getSLIConnections(postThrottleBridges)
                     Renderer.setSLIConnections(connections)
+                    
+                    -- Reset heat after throttling
+                    GameState.resetHeat()
+                    Renderer.heatWasInactive = (GameState.heatLevel <= 0)
                 end
             end
 
