@@ -12,6 +12,13 @@ Renderer.shake = 0
 Renderer.shakeMultiplier = 1.0 -- Shake intensity multiplier (0.0 - 1.0+)
 Renderer.particlesEnabled = true -- Visual effects toggle
 
+-- Game Over Crash Animation
+Renderer.gameOverAnimating = false
+Renderer.gameOverAnimTime = 0
+Renderer.gameOverShakeDuration = 0.5 -- Shake before fall
+Renderer.gameOverFallDuration = 0.8 -- Time for tiles to fall
+Renderer.gameOverDelayUI = 1.5 -- Total delay before showing UI
+
 -- Fonts
 Renderer.fontSmall = nil
 Renderer.fontLarge = nil
@@ -43,7 +50,30 @@ function Renderer.reset()
     Renderer.shake = 0
     Renderer.heatWasInactive = true -- For activation effect
     Renderer.heatActivationTime = nil
+    Renderer.gameOverAnimating = false
+    Renderer.gameOverAnimTime = 0
     flux.clear()
+end
+
+-- Trigger the game over crash animation
+function Renderer.triggerGameOverCrash()
+    Renderer.gameOverAnimating = true
+    Renderer.gameOverAnimTime = 0
+    Renderer.shake = 25 -- Intense shake
+    
+    -- Give each tile random fall properties
+    for _, vt in ipairs(Renderer.visualTiles) do
+        vt.fallDelay = math.random() * 0.3 -- Staggered fall
+        vt.fallSpeed = 0
+        vt.fallRotation = 0
+        vt.rotationSpeed = (math.random() - 0.5) * 10 -- Random rotation
+        vt.originalY = vt.y
+    end
+end
+
+-- Check if game over animation is complete
+function Renderer.isGameOverAnimComplete()
+    return Renderer.gameOverAnimating and Renderer.gameOverAnimTime >= Renderer.gameOverDelayUI
 end
 
 function Renderer.addTile(tile, meta)
@@ -363,6 +393,29 @@ end
 
 function Renderer.update(dt)
     flux.update(dt)
+    
+    -- Game Over Crash Animation Update
+    if Renderer.gameOverAnimating then
+        Renderer.gameOverAnimTime = Renderer.gameOverAnimTime + dt
+        
+        -- Phase 1: Intense shaking
+        if Renderer.gameOverAnimTime < Renderer.gameOverShakeDuration then
+            Renderer.shake = 25 * (1 - Renderer.gameOverAnimTime / Renderer.gameOverShakeDuration)
+        else
+            -- Phase 2: Tiles fall with gravity
+            local fallTime = Renderer.gameOverAnimTime - Renderer.gameOverShakeDuration
+            for _, vt in ipairs(Renderer.visualTiles) do
+                if vt.fallDelay then
+                    local tileTime = fallTime - vt.fallDelay
+                    if tileTime > 0 then
+                        vt.fallSpeed = vt.fallSpeed + 1500 * dt -- Gravity
+                        vt.y = vt.y + vt.fallSpeed * dt
+                        vt.fallRotation = vt.fallRotation + vt.rotationSpeed * dt
+                    end
+                end
+            end
+        end
+    end
 
     -- Update particles
     for i = #Renderer.particles, 1, -1 do

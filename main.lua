@@ -57,6 +57,11 @@ function love.update(dt)
 
     local success, err = pcall(function()
         Renderer.update(dt)
+        
+        -- Check if game over crash animation is complete
+        if GameState.state == "gameover_animating" and Renderer.isGameOverAnimComplete() then
+            GameState.state = "gameover"
+        end
 
         -- Update heat calculation every frame
         GameState.calculateHeat()
@@ -459,13 +464,16 @@ function love.keypressed(key)
             end
 
             if not trainingOk then
-                -- Game over due to overtrained tile
-                GameState.state = "gameover"
+                -- Game over due to overtrained tile - trigger crash animation!
+                GameState.state = "gameover_animating"
                 GameState.gameOverReason = "overtrained"
                 
                 -- Play game over SFX and stop BGM
                 Audio.playSFX("game_over")
                 Audio.stopBGM()
+                
+                -- Trigger crash animation (shake + tiles fall)
+                Renderer.triggerGameOverCrash()
 
                 -- Show which tile caused the failure
                 if failedTile then
@@ -673,10 +681,11 @@ function love.keypressed(key)
 
             -- Check game over
             if GameState.state == "playing" and not Logic.canMove(GameState.grid) then
-                GameState.state = "gameover"
+                GameState.state = "gameover_animating"
                 GameState.gameOverReason = "no_moves"
                 Audio.playSFX("game_over")
                 Audio.stopBGM()
+                Renderer.triggerGameOverCrash()
             end
         end
     end
