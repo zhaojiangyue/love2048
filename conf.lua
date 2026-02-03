@@ -1,7 +1,7 @@
 function love.conf(t)
     t.identity = "hardware_2048" -- Save directory name
     t.version = "11.5"           -- LOVE version
-    t.console = true            -- Disable console for release builds
+    t.console = false            -- Disable console for release builds
     
     t.window.title = "NVIDIA 2048: The Hardware Ladder"
     t.window.width = 600

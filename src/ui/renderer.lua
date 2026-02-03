@@ -1162,7 +1162,7 @@ function Renderer.drawSplash()
     -- Version / Footer
     love.graphics.setColor(0.3, 0.3, 0.3)
     love.graphics.setFont(Renderer.fontSmall)
-    love.graphics.printf("v1.0.0 Stable Diffusion", 0, love.graphics.getHeight() - 30, love.graphics.getWidth(), "center")
+    love.graphics.printf("v1.0.0", 0, love.graphics.getHeight() - 30, love.graphics.getWidth(), "center")
 end
 
 
